@@ -1,0 +1,149 @@
+{
+  "kind": "decomp-side candidate interface contract; no source transfer authorized or performed",
+  "reference": {
+    "title": "0004000000141C00",
+    "version": 0,
+    "expanded_code_sha256": "834938d18d2b7c688311c46c27bed813d0d7a9f8e3cbb61da8a6a3f23d360ebd",
+    "resource": "battle/NKMSortIndex.tbb",
+    "resource_bytes": 50400,
+    "resource_sha256": "194158b3cd8c31a24a65ecb1c66407a1444126ec07ab60661c9b1f8afc99c7a4"
+  },
+  "recovered_source_revision": "540231316901f771ae18f9b59a6dc53e7a03591c",
+  "recovered_files": [
+    {
+      "path": "src/nkm_sort_index.c",
+      "working_file_sha256": "5122acc71fb466508e1f5e8fb9be4aaf49a17793d92e6ee641eb28f68c40a66b",
+      "git_blob": "877f596ec59c3996036ab54733d6c075f1198d57",
+      "last_change_revision": "5c82ec0bea84fba235c989a46b5bf9d7e499ff00"
+    },
+    {
+      "path": "src/nkm_section3.c",
+      "working_file_sha256": "ad62d432ae7e9dc8b2e433595734d61498f58c0ca70f3b6fe25abd97dbbdf949",
+      "git_blob": "bbf3382be098e28d92789bd5060020a99ce57899",
+      "last_change_revision": "5c82ec0bea84fba235c989a46b5bf9d7e499ff00"
+    },
+    {
+      "path": "src/tbcr_access.c",
+      "working_file_sha256": "5f3355a96dbfe822bb8a9624aed2d88e383bbeff4fc838c4a8db3622b6de84d6",
+      "git_blob": "5b42a3b122ff2261b2e636dca6344f36aae6e05f",
+      "last_change_revision": "5c82ec0bea84fba235c989a46b5bf9d7e499ff00"
+    },
+    {
+      "path": "src/unsigned_quotient.c",
+      "working_file_sha256": "2e40a9550a5d9bcf0720a7d57ade3c2e4df015a83729ea707cccb6be1cd977de",
+      "git_blob": "76d49d1c37b982e1dea05134456ba11b378ea044",
+      "last_change_revision": "5c82ec0bea84fba235c989a46b5bf9d7e499ff00"
+    },
+    {
+      "path": "src/nkm_sort_index.h",
+      "working_file_sha256": "b2e8c90f63cee9169971bdb70aaeb8048e05491e837e5dd94aa6620886b30ba5",
+      "git_blob": "6807a0724ce174f8b169034d4e1a2156a0aa6c7b",
+      "last_change_revision": "5c82ec0bea84fba235c989a46b5bf9d7e499ff00"
+    },
+    {
+      "path": "src/tbcr_access.h",
+      "working_file_sha256": "827a90e8e7a1b263a17e9861ce8afb4fe26bf31fe4e0af64585f186fe3cd874a",
+      "git_blob": "8bed275555ca27e326a54dd23db26f4dc96b2cad",
+      "last_change_revision": "5c82ec0bea84fba235c989a46b5bf9d7e499ff00"
+    },
+    {
+      "path": "src/unsigned_quotient.h",
+      "working_file_sha256": "871367fa9834c3543e524c56a2074b75d5400715c98d3c799bc5da2b1b4cf091",
+      "git_blob": "13320b71473e4bee53e0a6d13f57c6b3dddd8f1f",
+      "last_change_revision": "5c82ec0bea84fba235c989a46b5bf9d7e499ff00"
+    },
+    {
+      "path": "src/resource_lifecycle.h",
+      "working_file_sha256": "6b4126e023dc623f315eea239331a969717bbcabdee77986501c8fc659644eab",
+      "git_blob": "8d9c67145696cdbf238bee1cef074c1e66e7a6ec",
+      "last_change_revision": "5c82ec0bea84fba235c989a46b5bf9d7e499ff00"
+    }
+  ],
+  "entry_points": {
+    "nkm_sort_index_lookup": "0x002883E8",
+    "nkm_section3_pair_lookup": "0x001A0EA4",
+    "tbcr_select_section": "0x002AC358",
+    "tbl1_payload": "0x002C0EF0",
+    "tbl1_entry_count": "0x002C0EA0",
+    "resource_select_tbcr_section": "0x002C0F18",
+    "smt4_unsigned_quotient": "0x002C6C64"
+  },
+  "original_address_dependency": {
+    "registry_address": "0x0049382C",
+    "entries": 67,
+    "entry_bytes": 16,
+    "path_u32_offset": 0,
+    "loaded_address_u32_offset": 4,
+    "size_u32_offset": 8,
+    "policy_u8_offset": 12,
+    "opaque_bytes": [
+      13,
+      14,
+      15
+    ],
+    "consumer_resource_id": 1,
+    "loaded_address_word": "0x00493840",
+    "sections": [
+      2,
+      3
+    ],
+    "byte_order": "little",
+    "only_consumed_registry_field": "loaded_address_u32"
+  },
+  "arm_unit": {
+    "source_files": [
+      "src/nkm_sort_index.c",
+      "src/nkm_section3.c",
+      "src/tbcr_access.c",
+      "src/unsigned_quotient.c"
+    ],
+    "headers": [
+      "src/nkm_sort_index.h",
+      "src/tbcr_access.h",
+      "src/unsigned_quotient.h",
+      "src/resource_lifecycle.h"
+    ],
+    "external_executable_calls": [],
+    "external_data_symbol": "smt4_table_resource_registry",
+    "comparison_link_address": "0x00600000",
+    "bytes": 472,
+    "binary_sha256": "187b9ef735363c4ca9c17ce302b995b6d76571c1591f7120421267194fb56b14"
+  },
+  "host_research": {
+    "adapter_files": [
+      "tools/host/nkm_address_space.c",
+      "tools/host/nkm_address_space.h"
+    ],
+    "unchanged_compiled_source": "src/unsigned_quotient.c",
+    "adapter_status": "working tree additions; hashes in host COMPLETE.json, not a pinned port import",
+    "adapted_contracts": "six helpers/consumers; original src files remain unchanged",
+    "entry": "smt4_host_eval",
+    "original_address_bits": 32,
+    "tested_host_pointer_bits": 64,
+    "max_regions": 64,
+    "read_budget": "caller-supplied u32; failed calls preserve output value",
+    "runtime_services_implemented": []
+  },
+  "provenance_review": {
+    "recovered_source": "Reviewed comments, instruction reports and clean HEAD identities; reconstructed locally from pinned EU instructions",
+    "external_implementation_copied": false,
+    "host_adapter": "new project-authored research based on documented recovered contracts",
+    "original_runtime_library_identity": "unresolved; consumed quotient only",
+    "project_license": "not selected; no grant of redistribution/relicensing inferred",
+    "research_toolchain": "installed proprietary Microsoft compiler, recorded locally; no tool binary copied into source tree",
+    "arm_toolchain": "existing pinned xPack GCC; licenses retained with ignored distribution",
+    "redistribution_review_complete": false
+  },
+  "evidence": {
+    "native": "local/validation/nkm-host-20261007-final-r2/COMPLETE.json",
+    "arm": "local/validation/nkm-host-20261007-arm-regression/COMPLETE.json",
+    "shared_synthetic": "local/validation/nkm-host-20261007-audit/shared-synthetic.json"
+  },
+  "open_gates": {
+    "G1": "checkpoint/current content/settings, isolated-profile evidence and gate review; live work deferred",
+    "G2": "loaded-table/live consumer agreement and gate review; live work deferred",
+    "G3": "G1/G2 prerequisites, compiler/full ABI/matching decision, fresh preparation/independent decoder evidence, reviewed transfer baseline/mechanism and licensing/provenance approval"
+  },
+  "source_transfer_performed": false,
+  "port_runtime_started": false
+}

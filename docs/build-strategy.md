@@ -65,6 +65,32 @@ binding. No C library or compiler division routine is silently substituted.
 The source models original little-endian loads and 32-bit addresses; a compile-
 time assertion confines the original-address helper implementation to 32-bit targets.
 
+## Bounded host address research
+
+A08 now has a synthetic 64-bit host prototype, separate from recovered source
+and the port runtime. Run from this repository with a fresh local directory:
+
+```powershell
+python tools/check_nkm_host_boundary.py --output local/validation/NEW-HOST
+```
+
+It uses installed Visual C++ x64 tools (or `--vcvarsall PATH`) and 64-bit Python.
+The checker records actual compiler/linker/setup hashes and commands; the verified
+run used MSVC 19.29.30159. Only `tools/host/nkm_address_space.c` and unchanged
+`src/unsigned_quotient.c` are compiled. The adapter explicitly replaces six
+pointer-based helper/consumer contracts with bounded u32-address operations.
+Original consumers/helpers and all ARM checker modes remain unchanged.
+
+Registry bytes retain 67 x 16-byte layout and u32 addresses. Read-only host
+regions, alignment/extent checks, and a read budget produce separate adapter
+faults without inventing original error returns. The prototype runs synthetic
+fixtures without ARM emulation or game data. It is not an asset-backed native
+demonstration, original compiler decision, approved source import, or passed gate.
+See [the boundary report](recovery/nkm-host-boundary.md) for tested contracts,
+limits, source identities, provenance review and the ARM evidence bridge, and
+[`config/nkm-host-contract.json`](../config/nkm-host-contract.json) for the exact
+candidate source/data dependency inventory.
+
 ## Connected recovery and its limits
 
 The [resource order](recovery/resource-order.md),
@@ -102,8 +128,9 @@ open.
 Consumed quotient behavior does not establish a complete division ABI. The
 [remainder interface](recovery/resource-order.md) adapts original r1 to C r0;
 full signed/zero-divisor behavior and state seeding remain unclaimed. ARM exclusive
-instructions need a reviewed native synchronization boundary. Original 32-bit
-addresses/registry layouts need an explicit host adaptation before 64-bit use.
+instructions need a reviewed native synchronization boundary. The table unit's
+original 32-bit addresses/registry layouts now have the bounded host research
+adapter above; a reviewed native import and lifetime/service policy remain open.
 
 Before G3 closes, complete its required G1/G2 evidence, define a useful recovered
 unit and its dependencies, investigate compiler fingerprints, repeat preparation
