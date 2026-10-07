@@ -16,6 +16,18 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
     boolean resubmit;
     boolean recoverAllocation;
     boolean recoverConversion;
+    boolean recoverSelector;
+    boolean recoverRegistration;
+    boolean recoverRawAllocation;
+    boolean recoverHeapAllocation;
+    long heapEntry, heapExecutions, heapInnerCalls, heapCounterReads, heapCounterWrites, heapCounterWraps, heapWrappingAddresses;
+    static final long HEAP_FOURTH=0x146ce0, HEAP_FIFTH=0x146cf0, HEAP_SIXTH=0x146d10, HEAP_INNER=0x146ad8;
+    long rawEntry, rawExecutions, rawLowerCalls, rawLockCalls;
+    int textSize;
+    static final long RAW_STATE=0x465170, LOWER_ALLOC=0x2c3a98;
+    long registrationEntry, registrationExecutions, registrationSelectorCalls;
+    long selectorEntry, selectorExecutions;
+    final Set<Integer> selectorResults=new TreeSet<>();
     long conversionEntry, conversionSelectorCalls;
     static final long ACCOUNT_STATE=0x980000, HEAP_INDEX=0x2b3340;
     final Set<Integer> conversionTopologies=new TreeSet<>();
@@ -24,7 +36,11 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
     static final long RAW_ALLOC=0x2b26f0, ACCOUNT=0x2b260c, ZERO=0x2c3b9c;
     long reusedAllocations, repeatedNullRequests, loadedSkips, interleavedLists;
     @Override boolean originalCode(long pc) {
-        return (recoverConversion && within(pc,4,CONVERT,0x1246f0)) ||
+        return (recoverHeapAllocation && within(pc,4,LOWER_ALLOC,0x2c3afc)) ||
+            (recoverRawAllocation && within(pc,4,RAW_ALLOC,0x2b285c) && !within(pc,4,0x2b2724,0x2b273c)) ||
+            (recoverRegistration && within(pc,4,ACCOUNT,0x2b26ec)) ||
+            (recoverSelector && within(pc,4,HEAP_INDEX,0x2b33cc)) ||
+            (recoverConversion && within(pc,4,CONVERT,0x1246f0)) ||
             (recoverAllocation && (within(pc,4,ALLOC,0x2c4c40) || within(pc,4,0x2c5544,0x2c5634))) ||
             super.originalCode(pc) || within(pc,4,0x113d58,0x113e70) ||
             within(pc,4,0x113e80,0x1142e8) || within(pc,4,0x114340,0x114370);
@@ -42,11 +58,22 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
         long allocatingRaw, allocatingUser;
         int batch;
         boolean worker, destroyed;
+        boolean selecting;
+        boolean routing;
+        boolean inHeapWrapper;
+        long heapCounter, heapStackTop;
+        int heapNext, heapReads, heapWrites;
+        int rawStateReads;
+        long rawStackTop;
         long active, nodeReturn, ioReturn, releasing;
         int round, variant, callbackIndex, phase, ioStage, cursor, ioIndex;
         String path;
         long length, data, handleValue, statePointer, outputPath;
         ConnectedMachine(byte[] mapped,byte[] binary) { super(mapped,binary); }
+        @Override void step(boolean rebuilt,int steps) throws Exception {
+            if(rebuilt) require(within(thread.getCounter().getOffset(),4,BUILD,BUILD+textSize),"Executable text extent");
+            super.step(rebuilt,steps);
+        }
         @Override long packetAddress(int index) {
             return batch==0 ? (recoverAllocation ? PACKETS+index*0x400 : super.packetAddress(index)) : reusePackets.get(index);
         }
@@ -87,6 +114,8 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
             allocatingRaw=raw; allocatingUser=address;
             while(thread.getCounter().getOffset()!=stop) {
                 long pc=thread.getCounter().getOffset();
+                if(recoverRegistration && rebuiltPath && pc==registrationEntry) pc=ACCOUNT;
+                if(recoverRawAllocation && rebuiltPath && pc==rawEntry) pc=RAW_ALLOC;
                 if(List.of(HEAP_ACQUIRE,HEAP_RELEASE,RAW_ALLOC,ACCOUNT,ZERO).contains(pc)) {
                     require(next<calls.length && calls[next++]==pc,"Nested allocator call/clear order");
                     require((register("sp")&7)==0,"Allocator boundary alignment");
@@ -104,21 +133,27 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
                         require(depth==2 && register("r0")==256 && register("r1")==256 &&
                             register("r2")==0 && register("r3")==rounded && get(register("sp"))==fifth,
                             "Raw allocation preserves caller arguments and rounded size");
-                        allocated(address,size); rawPointers.put(address,raw); result=raw;
+                        if(recoverRawAllocation) steps+=executeRawAllocation(address,size,raw,rounded,fifth);
+                        else { rawFixture(address,size,raw); result=raw; }
                     } else if(pc==ACCOUNT) {
                         require(depth==2 && register("r0")==raw,"Accounting uses raw pointer under nested lock");
                         // Accounting owns these header fields, distinct from the user payload/backlink.
-                        for(int i=8;i<32;i+=4) model(raw+i,4,(seed+batch*0x100+i)^0x87654321L);
-                        if(recoverConversion) registerHeader(raw,rounded);
+                        if(recoverRegistration) steps+=executeRegistration(raw);
+                        else {
+                            for(int i=8;i<32;i+=4) model(raw+i,4,(seed+batch*0x100+i)^0x87654321L);
+                            if(recoverConversion) registerHeader(raw,rounded);
+                        }
                     } else {
                         require(register("r0")==address && register("r1")==size && depth==(next==5 ? 2 : 1),
                             "Both clearing calls retain user pointer, size and lock depth");
                         memory(address,new byte[size]); setBytes(address,new byte[size]); allocationZeroCalls++;
                     }
                     // Deliberate dependency effect checks every subsequent state reload.
-                    model(HEAP+4,4,(get(HEAP+4)^pc^next^0x87654321L)&MASK);
+                    boolean recovered=(recoverRegistration && pc==ACCOUNT) || (recoverRawAllocation && pc==RAW_ALLOC);
+                    if(!recovered) model(HEAP+4,4,(get(HEAP+4)^pc^next^0x87654321L)&MASK);
                     events.add("alloc:"+Long.toHexString(pc)+":"+(pc==RAW_ALLOC || pc==ACCOUNT ? raw : address)+":"+depth);
-                    dependencyCalls++; externalReturn(result); continue;
+                    if(!recovered) { dependencyCalls++; externalReturn(result); }
+                    continue;
                 }
                 step(rebuiltPath,++steps);
             }
@@ -128,7 +163,169 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
             compareMemory("Allocator return"); allocatingRaw=0; allocatingUser=0;
             allocationExecutions++; maxSteps=Math.max(maxSteps,steps); return true;
         }
-        int heapIndex(long raw) { return (int)((seed+raw/4)%8); }
+        void rawFixture(long address,int size,long raw) {
+            allocated(address,size); rawPointers.put(address,raw);
+            if(recoverRegistration) {
+                // Lower-allocation fixture selects a category; registration owns its stores.
+                int tag=(int)((seed+headers.size()+batch)%3)==0 ? 0x8108 : 0xff03;
+                model(ACCOUNT_STATE+56,2,tag);
+                if(seed%3==0) model(ACCOUNT_STATE+8,4,raw+12);
+            }
+        }
+        int executeRawAllocation(long address,int size,long raw,long rounded,long fifth) throws Exception {
+            long stop=register("lr"), sp=register("sp"), base=get(RAW_STATE+4);
+            long heap=(base+28)&MASK, lock=(heap+88)&MASK;
+            long[] saved=new long[8]; for(int i=0;i<8;i++) saved[i]=register("r"+(i+4));
+            byte[] caller=memory(sp,16);
+            long[] calls={HEAP_ACQUIRE,LOWER_ALLOC,HEAP_RELEASE};
+            int next=0,steps=0; routing=true; rawStateReads=0; rawStackTop=sp;
+            while(thread.getCounter().getOffset()!=stop) {
+                long pc=thread.getCounter().getOffset();
+                if(recoverHeapAllocation && rebuiltPath && pc==heapEntry) pc=LOWER_ALLOC;
+                if(List.of(HEAP_ACQUIRE,LOWER_ALLOC,HEAP_RELEASE).contains(pc)) {
+                    require(next<calls.length && calls[next++]==pc,"Raw router dependency order");
+                    require((register("sp")&7)==0,"Raw router dependency stack alignment");
+                    compareMemory("Raw router boundary");
+                    long result=0xface4321L;
+                    if(pc==LOWER_ALLOC) {
+                        require(register("r0")==heap && register("r1")==rounded &&
+                            register("r2")== (fifth==0 ? MASK-3 : 4) && register("r3")==0 &&
+                            get(register("sp"))==0 && get(register("sp")+4)==0,
+                            "Raw lower six arguments");
+                        if(recoverHeapAllocation) steps+=executeHeapAllocation(address,size,raw,heap,rounded,fifth);
+                        else { rawFixture(address,size,raw); result=raw; }
+                        rawLowerCalls++;
+                    } else {
+                        require(register("r0")==lock,"Raw router captured object lock"); rawLockCalls++;
+                    }
+                    // Explicit lower effects require captured raw addresses and outer lock reloads.
+                    boolean recovered=recoverHeapAllocation && pc==LOWER_ALLOC;
+                    if(!recovered) rawDependencyEffect(pc,next);
+                    events.add("raw:"+Long.toHexString(pc)+":"+(pc==LOWER_ALLOC ? heap : lock));
+                    if(!recovered) { dependencyCalls++; externalReturn(result); }
+                    continue;
+                }
+                step(rebuiltPath,++steps);
+            }
+            routing=false;
+            require(next==3 && rawStateReads==1 && register("r0")==raw && register("sp")==sp,
+                "Raw router return, state read and stack");
+            for(int i=0;i<8;i++) require(saved[i]==register("r"+(i+4)),"Raw router callee-saved register");
+            require(Arrays.equals(caller,memory(sp,16)),"Raw router caller stack");
+            compareMemory("After recovered raw router"); rawExecutions++; return steps;
+        }
+        void rawDependencyEffect(long pc,int ordinal) {
+            model(RAW_STATE+4,4,(get(RAW_STATE+4)+0x1000)&MASK);
+            model(HEAP+4,4,(get(HEAP+4)^pc^ordinal^0x87654321L)&MASK);
+        }
+        int executeHeapAllocation(long address,int size,long raw,long heap,long rounded,long fifth) throws Exception {
+            long stop=register("lr"), sp=register("sp");
+            long[] saved=new long[8]; for(int i=0;i<8;i++) saved[i]=register("r"+(i+4));
+            byte[] caller=memory(sp,8);
+            heapCounter=(heap+84)&MASK; heapStackTop=sp;
+            // Guarded counter backing only; not a complete or usable heap object.
+            long guard=heapCounter-16;
+            require(guard>=0 && guard+36<=MASK,"Counter guard extent");
+            if(!expected.containsKey(guard)) {
+                for(var r:expected.entrySet()) require(guard+36<=r.getKey() || guard>=r.getKey()+r.getValue().length,
+                    "Counter fixture does not overlap retained memory");
+                region(guard,36,new Random(seed^heap));
+                model(heapCounter,4,(seed^heap^0xfedcba98L)&MASK);
+            }
+            if(heap<28 || heap+84>MASK) heapWrappingAddresses++;
+            heapNext=0; heapReads=0; heapWrites=0; inHeapWrapper=true;
+            long[] calls={HEAP_FOURTH,HEAP_FIFTH,HEAP_SIXTH,HEAP_INNER};
+            int steps=0;
+            while(thread.getCounter().getOffset()!=stop) {
+                long pc=thread.getCounter().getOffset();
+                if(List.of(HEAP_FOURTH,HEAP_FIFTH,HEAP_SIXTH,HEAP_INNER).contains(pc)) {
+                    require(heapNext<4 && calls[heapNext++]==pc,"Heap inner dependency order");
+                    require((register("sp")&7)==0,"Heap inner stack alignment");
+                    require(register("r0")==((heap+24)&MASK) &&
+                        (pc==HEAP_INNER ? register("r1")==rounded && register("r2")==(fifth==0 ? MASK-3 : 4) : register("r1")==0),
+                        "Heap inner arguments");
+                    compareMemory("Heap inner boundary");
+                    require(heapReads==0 && heapWrites==0,"Heap counter untouched before allocation returns");
+                    // Adversarial lower effects test post-call counter loads and outer lock reloads.
+                    long value=pc==HEAP_INNER && (seed+batch)%2==0 ? MASK : (get(heapCounter)^pc^0x87654321L)&MASK;
+                    model(heapCounter,4,value); rawDependencyEffect(pc,heapNext);
+                    if(pc==HEAP_INNER) {
+                        rawFixture(address,size,raw);
+                        long count=(value+1)&MASK;
+                        set(heapCounter,4,count,true);
+                        if(count==0) heapCounterWraps++;
+                    }
+                    events.add("heap:"+Long.toHexString(pc)+":"+heap+":"+value);
+                    heapInnerCalls++; dependencyCalls++;
+                    externalReturn(pc==HEAP_INNER ? raw : 0xface4321L); continue;
+                }
+                step(rebuiltPath,++steps);
+            }
+            inHeapWrapper=false;
+            require(heapNext==4 && heapReads==1 && heapWrites==1,"Heap conditional counter accesses");
+            require(register("r0")==raw && register("sp")==sp,"Heap allocation return and stack");
+            for(int i=0;i<8;i++) require(saved[i]==register("r"+(i+4)),"Heap callee-saved register");
+            require(Arrays.equals(caller,memory(sp,8)),"Heap caller argument slots");
+            compareMemory("Heap wrapper return"); heapExecutions++;
+            heapCounterReads+=heapReads; heapCounterWrites+=heapWrites; return steps;
+        }
+        int heapIndex(long raw) {
+            if(!recoverSelector) return (int)((seed+raw/4)%8);
+            int members=0;
+            for(int i=0;i<4;i++) {
+                long start=get(HEAP+28+i*4), end=(start+get(HEAP+44+i*4))&MASK;
+                if(start<=raw && raw<=end) members|=1<<i;
+            }
+            return members==0 ? 0 : Integer.numberOfTrailingZeros(members);
+        }
+        int executeSelector(int want) throws Exception {
+            long stop=register("lr"), sp=register("sp");
+            long[] saved=new long[8]; for(int i=0;i<8;i++) saved[i]=register("r"+(i+4));
+            selecting=true; int steps=0;
+            while(thread.getCounter().getOffset()!=stop) step(rebuiltPath,++steps);
+            selecting=false;
+            require(register("r0")==want && register("sp")==sp,"Recovered selector result/stack");
+            for(int i=0;i<8;i++) require(register("r"+(i+4))==saved[i],"Selector callee-saved register");
+            compareMemory("Recovered selector leaves retained state unchanged");
+            selectorExecutions++; selectorResults.add(want); return steps;
+        }
+        void appendHeader(long raw) {
+            long tail=headers.isEmpty() ? 0 : headers.get(headers.size()-1)+12;
+            conversionSet(tail==0 ? ACCOUNT_STATE : tail+4,4,raw+12);
+            conversionSet(ACCOUNT_STATE+4,4,raw+12);
+            conversionSet(raw+12,4,tail); conversionSet(raw+16,4,0);
+            conversionSet(raw+8,2,get(ACCOUNT_STATE+56)&65535);
+            headers.add(raw);
+        }
+        int executeRegistration(long raw) throws Exception {
+            long stop=register("lr"), sp=register("sp");
+            long[] saved=new long[8]; for(int i=0;i<8;i++) saved[i]=register("r"+(i+4));
+            conversionStores.clear();
+            conversionSet(ACCOUNT_STATE+24,4,(get(ACCOUNT_STATE+24)+1)&MASK);
+            conversionSet(ACCOUNT_STATE+28,4,(get(ACCOUNT_STATE+28)+get(raw))&MASK);
+            boolean selected=(get(ACCOUNT_STATE+56)&255)<8;
+            if(!selected) appendHeader(raw);
+            int calls=0,steps=0;
+            while(thread.getCounter().getOffset()!=stop) {
+                long pc=thread.getCounter().getOffset();
+                if(pc==(rebuiltPath ? selectorEntry : HEAP_INDEX)) {
+                    require(selected && calls<2 && register("r0")==raw,"Registration heap selector");
+                    require((register("sp")&7)==0,"Registration selector alignment");
+                    compareMemory("Registration accounting stage "+calls);
+                    int index=heapIndex(raw); steps+=executeSelector(index);
+                    long slot=ACCOUNT_STATE+(calls==0 ? 60 : 92)+index*4;
+                    long amount=calls==0 ? get(raw) : get(raw)-128-60;
+                    conversionSet(slot,4,(get(slot)+amount)&MASK);
+                    if(++calls==2) appendHeader(raw);
+                    registrationSelectorCalls++; continue;
+                }
+                step(rebuiltPath,++steps);
+            }
+            require(calls==(selected ? 2 : 0) && register("sp")==sp,"Registration return/selector count");
+            for(int i=0;i<8;i++) require(register("r"+(i+4))==saved[i],"Registration callee-saved register");
+            compareMemory("After recovered registration"); conversionStores.clear();
+            registrationExecutions++; events.add("register:"+raw+":"+calls); return steps;
+        }
         void registerHeader(long raw,long rounded) {
             boolean prepend=seed%2!=0;
             long tail=prepend || headers.isEmpty() ? 0 : headers.get(headers.size()-1)+12;
@@ -175,16 +372,19 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
             int calls=0,steps=0;
             while(thread.getCounter().getOffset()!=stop) {
                 long pc=thread.getCounter().getOffset();
-                if(pc==HEAP_INDEX) {
+                if(pc==(recoverSelector && rebuiltPath ? selectorEntry : HEAP_INDEX)) {
                     require(selected && calls<2 && register("r0")==raw,"Conversion heap selector");
                     require((register("sp")&7)==0,"Conversion selector stack alignment");
                     compareMemory("Conversion accounting stage "+calls);
                     int index=heapIndex(raw);
+                    if(recoverSelector) steps+=executeSelector(index);
                     long slot=ACCOUNT_STATE+(calls==0 ? 60 : 92)+index*4;
                     long size=get(raw), amount=calls==0 ? size : size-128-60;
                     conversionSet(slot,4,(get(slot)-amount)&MASK);
                     if(++calls==2) unlinkHeader(raw);
-                    conversionSelectorCalls++; dependencyCalls++; externalReturn(index); continue;
+                    conversionSelectorCalls++;
+                    if(!recoverSelector) { dependencyCalls++; externalReturn(index); }
+                    continue;
                 }
                 step(rebuiltPath,++steps);
             }
@@ -238,6 +438,14 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
         }
         @Override public void beforeLoad(PcodeThread<byte[]> t,PcodeOp op,AddressSpace space,byte[] offset,int size) {
             long a=Utils.bytesToLong(offset,offset.length,false); lifetime(a,size);
+            if(inHeapWrapper) {
+                if(a==heapCounter) {
+                    require(size==4 && heapNext==4 && heapReads++==0,"Heap counter read after inner allocation"); return;
+                }
+                require(within(a,size,heapStackTop-64,heapStackTop+8) ||
+                    within(a,size,BUILD,BUILD+codeSize),"Unexpected heap wrapper read "+Long.toHexString(a)); return;
+            }
+            if(routing && a==RAW_STATE+4) { require(size==4,"Raw state read width"); rawStateReads++; }
             if(worker && a==GLOBAL) require(size==1,"Stop byte width");
             if(within(a,size,OBJ,OBJ+0x200)) {
                 require(!destroyed || !within(a,size,OBJ,OBJ+24),"Destroyed object read"); return;
@@ -246,6 +454,19 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
         }
         @Override public void beforeStore(PcodeThread<byte[]> t,PcodeOp op,AddressSpace space,byte[] offset,int size,byte[] value) {
             long a=Utils.bytesToLong(offset,offset.length,false); lifetime(a,size);
+            if(inHeapWrapper) {
+                if(a==heapCounter) {
+                    require(size==4 && heapNext==4 && heapReads==1 && heapWrites++==0,"Heap counter store after read");
+                    CompareResourceCreate.record(writes,a,size,Utils.bytesToLong(value,size,false)); return;
+                }
+                require(within(a,size,heapStackTop-64,heapStackTop),"Unexpected heap wrapper store"); return;
+            }
+            if(routing) {
+                require(within(a,size,STACK-0x1000,rawStackTop),"Unexpected raw router store"); return;
+            }
+            if(selecting) {
+                require(within(a,size,STACK-0x1000,STACK),"Unexpected selector store"); return;
+            }
             if(recoverConversion && conversionStores.contains(a)) {
                 for(int i=0;i<size;i++) require(conversionStores.contains(a+i),"Conversion store width");
                 CompareResourceCreate.record(writes,a,size,Utils.bytesToLong(value,size,false)); return;
@@ -264,6 +485,7 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
             batch=0; requests.clear(); packets.clear(); reuseDescriptors.clear(); reusePackets.clear();
             rawPointers.clear(); allocatingRaw=0; allocatingUser=0;
             headers.clear(); conversionStores.clear();
+            routing=false; rawStateReads=0; inHeapWrapper=false;
             setup(rebuilt,mode,seed,neighbors); variant=v;
             for(long d:descriptors) {
                 model(d,4,1); model(d+0x130,4,0); model(d+0x138,4,0);
@@ -273,12 +495,28 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
             region(GLOBAL+0x24,4,new Random(seed)); model(GLOBAL+0x24,4,0x76543210);
             // Same heap lock is consumed by I/O and release; mutate it at lower boundaries.
             model(HEAP+4,4,0x12345678);
+            if(recoverRawAllocation) {
+                region(RAW_STATE,32,new Random(seed));
+                model(RAW_STATE+4,4,seed%2==0 ? 0x990000 : 0xfffffff0L);
+            }
             if(recoverConversion) {
                 region(ACCOUNT_STATE-16,0xa0,new Random(seed)); model(HEAP+8,4,ACCOUNT_STATE);
                 for(int offset:new int[]{0,4,8,24,28}) model(ACCOUNT_STATE+offset,4,0);
                 for(int offset=60;offset<124;offset+=4) model(ACCOUNT_STATE+offset,4,0);
             }
             heapRanges(!recoverAllocation && v%2==0 ? new long[]{0,MASK,0,0} : new long[]{0,0,0,0});
+            if(recoverSelector) {
+                // Stable synthetic ranges. Slots 2/3 are empty after wrapping, so
+                // release routing still converts every aligned payload.
+                for(int i=0;i<4;i++) { model(HEAP+28+i*4,4,MASK); model(HEAP+44+i*4,4,1); }
+                if(v<2) for(int i=0;i<2;i++) {
+                    model(HEAP+28+i*4,4,((i^v)==0 ? 0x90f000 : 0x91f000));
+                    model(HEAP+44+i*4,4,0x10000);
+                }
+                if(v==3) for(int i=0;i<2;i++) {
+                    model(HEAP+28+i*4,4,0x900000); model(HEAP+44+i*4,4,0x30000);
+                }
+            }
         }
         void startIo() {
             require(ioStage==0 && !dead.contains(active),"I/O starts once on live node");
@@ -459,7 +697,7 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
                     } else round++;
                     outer=(outer+1)%3; externalReturn(0); continue;
                 }
-                require(rebuiltPath ? within(pc,4,BUILD,BUILD+codeSize) : originalCode(pc),"Instruction escape "+Long.toHexString(pc));
+                require(rebuiltPath ? within(pc,4,BUILD,BUILD+textSize) : originalCode(pc),"Instruction escape "+Long.toHexString(pc));
                 require(++steps<20000,"Continuous instruction budget");
                 if(!rebuiltPath) visited.add(pc); monitor.checkCancelled(); thread.stepInstruction();
             }
@@ -483,6 +721,14 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
         resubmit=Arrays.asList(getScriptArgs()).contains("resubmit");
         recoverAllocation=Arrays.asList(getScriptArgs()).contains("allocation");
         recoverConversion=Arrays.asList(getScriptArgs()).contains("conversion");
+        recoverSelector=Arrays.asList(getScriptArgs()).contains("selector");
+        recoverRegistration=Arrays.asList(getScriptArgs()).contains("registration");
+        recoverRawAllocation=Arrays.asList(getScriptArgs()).contains("raw-allocation");
+        recoverHeapAllocation=Arrays.asList(getScriptArgs()).contains("heap-allocation");
+        require(!recoverHeapAllocation || recoverRawAllocation,"Heap allocation requires recovered raw allocation");
+        require(!recoverRawAllocation || recoverRegistration,"Raw allocation requires recovered registration");
+        require(!recoverRegistration || recoverSelector,"Registration requires recovered selector");
+        require(!recoverSelector || recoverConversion,"Selector requires retained conversion");
         require(!recoverConversion || recoverAllocation,"Conversion requires retained allocation");
         Path out=Path.of(getScriptArgs()[0]); require(!Files.exists(out.resolve("comparison.json")),"Output exists");
         byte[] mapped=new byte[0x377000]; require(currentProgram.getMemory().getBytes(toAddr(0x100000),mapped)==mapped.length,"Map");
@@ -490,12 +736,18 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
             "834938d18d2b7c688311c46c27bed813d0d7a9f8e3cbb61da8a6a3f23d360ebd"),"Hash");
         byte[] binary=Files.readAllBytes(out.resolve("registry-worker.bin")); codeSize=binary.length;
         require(codeSize>0 && codeSize<=0x2000,"Binary extent");
-        List<String> lines=Files.readAllLines(out.resolve("entries.txt")); require(lines.size()==(recoverConversion ? 10 : recoverAllocation ? 9 : 8),"Entries");
+        textSize=Integer.parseInt(Files.readString(out.resolve("text-size.txt")).trim());
+        require(textSize>0 && textSize<=codeSize,"Text extent");
+        List<String> lines=Files.readAllLines(out.resolve("entries.txt")); require(lines.size()==(recoverHeapAllocation ? 14 : recoverRawAllocation ? 13 : recoverRegistration ? 12 : recoverSelector ? 11 : recoverConversion ? 10 : recoverAllocation ? 9 : 8),"Entries");
         long[] all=lines.stream().mapToLong(Long::parseLong).toArray();
-        for(long entry:all) require(within(entry,4,BUILD,BUILD+codeSize),"Entry extent");
+        for(long entry:all) require(within(entry,4,BUILD,BUILD+textSize),"Entry extent");
         System.arraycopy(all,0,linked,0,5); loopEntry=all[5]; nodeEntry=all[6]; ioEntry=all[7]; recoverRelease=true;
         if(recoverAllocation) allocationEntry=all[8];
         if(recoverConversion) conversionEntry=all[9];
+        if(recoverSelector) selectorEntry=all[10];
+        if(recoverRegistration) registrationEntry=all[11];
+        if(recoverRawAllocation) rawEntry=all[12];
+        if(recoverHeapAllocation) heapEntry=all[13];
         ConnectedMachine[] machines={new ConnectedMachine(mapped,binary),new ConnectedMachine(mapped,binary)};
         try(PrintWriter log=new PrintWriter(Files.newBufferedWriter(out.resolve("results.tsv")))) {
             log.println("scenario\trequests_per_batch\tneighbors\tvariant\tmode\tid_pattern\tfinal_batch_ids\tfinal_descriptors\tfinal_packets\tevents");
@@ -558,11 +810,45 @@ public class CompareResourceRegistryWorker extends CompareResourceRegistryReques
             "{\"allocation_executions_both_paths\":%d,\"zero_calls_both_paths\":%d,\"metadata_conversions_both_paths\":%d,\"raw_residues\":%d}\n",
             allocationExecutions,allocationZeroCalls,metadataConversions,rawResidues.size()));
         if(recoverConversion) {
-            require(conversionTopologies.size()==4 && conversionSelectorCalls>0,"Conversion topology coverage");
+            require(conversionTopologies.equals(recoverRegistration ? Set.of(0,2,3) : Set.of(0,1,2,3)) && conversionSelectorCalls>0,"Conversion topology coverage");
             for(long pc=CONVERT;pc<0x1246f0;pc+=4) require(visited.contains(pc),"Unvisited conversion instruction");
             Files.writeString(out.resolve("conversion.json"),String.format(Locale.ROOT,
                 "{\"conversion_executions_both_paths\":%d,\"selector_calls_both_paths\":%d,\"list_topologies\":%d}\n",
                 metadataConversions,conversionSelectorCalls,conversionTopologies.size()));
+        }
+        if(recoverSelector) {
+            require(selectorExecutions==conversionSelectorCalls+registrationSelectorCalls && selectorResults.equals(Set.of(0,1)),"Recovered selector coverage");
+            Files.writeString(out.resolve("selector.json"),String.format(Locale.ROOT,
+                "{\"selector_executions_both_paths\":%d,\"selector_results\":[0,1],\"selector_modeled\":false}\n",selectorExecutions));
+        }
+        if(recoverRegistration) {
+            require(registrationExecutions==allocationExecutions && registrationSelectorCalls==conversionSelectorCalls,"Registration coverage");
+            for(long pc=ACCOUNT;pc<0x2b26ec;pc+=4) require(visited.contains(pc),"Unvisited registration instruction");
+            Files.writeString(out.resolve("registration.json"),String.format(Locale.ROOT,
+                "{\"registration_executions_both_paths\":%d,\"registration_selector_calls_both_paths\":%d,\"registration_modeled\":false}\n",
+                registrationExecutions,registrationSelectorCalls));
+        }
+        if(recoverRawAllocation) {
+            require(rawExecutions==allocationExecutions && rawLowerCalls==rawExecutions && rawLockCalls==rawExecutions*2,
+                "Raw allocation coverage");
+            Set<Long> wantRaw=new TreeSet<>();
+            for(long[] r:new long[][]{{0x2b26f0,0x2b2720},{0x2b273c,0x2b2744},{0x2b2758,0x2b2774},
+                                     {0x2b2790,0x2b27e0},{0x2b2850,0x2b285c}})
+                for(long pc=r[0];pc<r[1];pc+=4) wantRaw.add(pc);
+            Set<Long> actualRaw=new TreeSet<>();
+            for(long pc:visited) if(within(pc,4,RAW_ALLOC,0x2b285c)) actualRaw.add(pc);
+            require(actualRaw.equals(wantRaw),"Raw constructor route instruction coverage");
+            Files.writeString(out.resolve("raw-allocation.json"),String.format(Locale.ROOT,
+                "{\"raw_allocation_executions_both_paths\":%d,\"raw_lower_calls_both_paths\":%d,\"raw_lock_calls_both_paths\":%d,\"raw_original_instruction_addresses\":%d,\"raw_allocation_modeled\":false,\"raw_lower_dependencies_modeled\":%b}\n",
+                rawExecutions,rawLowerCalls,rawLockCalls,actualRaw.size(),!recoverHeapAllocation));
+        }
+        if(recoverHeapAllocation) {
+            require(heapExecutions==rawExecutions && heapInnerCalls==heapExecutions*4 && heapCounterWraps>0 && heapWrappingAddresses>0,
+                "Heap wrapper integration coverage");
+            for(long pc=LOWER_ALLOC;pc<0x2c3afc;pc+=4) require(visited.contains(pc),"Unvisited heap wrapper instruction");
+            Files.writeString(out.resolve("heap-allocation.json"),String.format(Locale.ROOT,
+                "{\"heap_allocation_executions_both_paths\":%d,\"heap_inner_calls_both_paths\":%d,\"heap_counter_reads_both_paths\":%d,\"heap_counter_writes_both_paths\":%d,\"heap_counter_wraps_both_paths\":%d,\"heap_wrapping_addresses_both_paths\":%d,\"heap_original_instruction_addresses\":25,\"heap_allocation_modeled\":false,\"heap_inner_dependencies_modeled\":true}\n",
+                heapExecutions,heapInnerCalls,heapCounterReads,heapCounterWrites,heapCounterWraps,heapWrappingAddresses));
         }
         println("SMT4_REGISTRY_WORKER_OK");
     }

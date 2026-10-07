@@ -481,7 +481,7 @@
       "kind": "function",
       "confidence": "confirmed",
       "evidence": "Two inclusive unsigned ranges, optional metadata cleanup/address conversion, lower free, synchronization reload; 3616 controlled original/rebuilt/oracle cases; docs/recovery/resource-release.md",
-      "remaining": "Release conversion recovered and integrated; heap selector/raw free/recursive synchronization remain modeled; live verification deferred",
+      "remaining": "Release conversion and optional heap selector recovered/integrated; raw free and recursive synchronization remain modeled; live verification deferred",
       "mode": "ARM"
     },
     {
@@ -489,7 +489,7 @@
       "name": "smt4_resource_allocator_state",
       "kind": "data",
       "confidence": "confirmed",
-      "evidence": "Literal 0x002C4424; +4 recursive synchronization object address, +0x24/+0x28 bases and +0x34/+0x38 lengths consumed by release; +8 points to allocation accounting/list state consumed by 0x001245F0",
+      "evidence": "Literal 0x002C4424; +4 recursive synchronization object address, +0x24/+0x28 bases and +0x34/+0x38 lengths consumed by release; +8 points to allocation accounting/list state consumed by 0x001245F0; selector 0x002B3340 consumes four starts at +0x1C..+0x28 and lengths at +0x2C..+0x38",
       "remaining": "Other fields and initialization remain unclassified"
     },
     {
@@ -517,7 +517,70 @@
       "mode": "ARM",
       "confidence": "confirmed",
       "evidence": "7608 original/rebuilt/oracle cases, all 64 instructions; counters, list removal, tag clear and retained registry/worker integration; docs/recovery/resource-release-convert.md",
-      "remaining": "Heap selector modeled; valid distinct header/list/accounting backing required; live verification deferred"
+      "remaining": "Selector recovered in optional retained mode; older direct corpus retains its model; valid header/list/accounting backing required; live verification deferred"
+    },
+    {
+      "address": "0x002B3340",
+      "name": "smt4_resource_heap_index",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed",
+      "evidence": "Four ordered inclusive unsigned ranges with wrapping ends and zero fallback; 17740 original/rebuilt/oracle cases, all 35 instructions; docs/recovery/resource-heap-index.md",
+      "remaining": "Stable readable state assumed; initialization and concurrent modification unverified; live checks deferred"
+    },
+    {
+      "address": "0x002B260C",
+      "name": "smt4_resource_allocate_register",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed",
+      "evidence": "Counter increments, two selector calls, tail insertion and full u16 accounting tag copy; 5962 original/rebuilt/oracle cases, all 56 instructions; docs/recovery/resource-allocate-register.md",
+      "remaining": "Disjoint valid backing and stable memory between calls; callers consume no return value; lower allocation/locks and live checks remain open"
+    },
+    {
+      "address": "0x002B26F0",
+      "name": "smt4_resource_allocate_raw",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed",
+      "evidence": "8824 original/rebuilt/oracle cases, all 85 instructions; exact selectors, signed alignment, zero-size, captured locks and lower call marshalling; docs/recovery/resource-allocate-raw.md",
+      "remaining": "Lower heap/fixed-object allocators and recursive locks modeled; retained integration pending; live checks deferred"
+    },
+    {
+      "address": "0x002C3A98",
+      "name": "smt4_resource_heap_allocate",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed",
+      "evidence": "16144 original/rebuilt/oracle cases; all 25 instructions; six-word forwarding, return preservation, post-call conditional counter increment and overflow; docs/recovery/resource-heap-allocate.md",
+      "remaining": "Four lower dependencies modeled; retained wrapper integration pending; complete heap semantics, concurrency and live checks unverified"
+    },
+    {
+      "address": "0x00146CE0",
+      "name": "smt4_resource_heap_configure_fourth",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed",
+      "evidence": "66992 original/rebuilt/oracle cases; 4 original instructions; u16 replacement at subobject+0x34; previous u16 return; docs/recovery/resource-heap-configure.md",
+      "remaining": "Direct contract only; existing wrapper and retained checker modes still model configuration; option meanings, complete heap and live verification open"
+    },
+    {
+      "address": "0x00146CF0",
+      "name": "smt4_resource_heap_configure_fifth",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed",
+      "evidence": "66992 original/rebuilt/oracle cases; 8 original instructions; bit-zero replacement at subobject+0x36 preserving bits 1-15; previous bit return; docs/recovery/resource-heap-configure.md",
+      "remaining": "Direct contract only; existing wrapper and retained checker modes still model configuration; option meanings, complete heap and live verification open"
+    },
+    {
+      "address": "0x00146D10",
+      "name": "smt4_resource_heap_configure_sixth",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed",
+      "evidence": "66992 original/rebuilt/oracle cases; 4 original instructions; byte replacement at subobject+0x38; sign-extended previous-byte return; docs/recovery/resource-heap-configure.md",
+      "remaining": "Direct contract only; existing wrapper and retained checker modes still model configuration; option meanings, complete heap and live verification open"
     }
   ],
   "leads": [
@@ -987,6 +1050,144 @@
         "list_topologies": 4,
         "evidence": "local/validation/registry-conversion-20261007/COMPLETE.json"
       }
+    },
+    {
+      "address": "0x002B3340",
+      "source": "src/resource_heap_index.c",
+      "build": "Separate 64-byte ARMv6K selector unit",
+      "instruction_level_cases": 17740,
+      "original_instruction_addresses": 35,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "modeled_calls": 0,
+      "stable_allocator_state_required": true,
+      "report": "docs/recovery/resource-heap-index.md",
+      "evidence": "local/validation/heap-index-20261007-direct/COMPLETE.json",
+      "retained_registry_integration": {
+        "scenarios": 324,
+        "binary_bytes": 3244,
+        "original_instruction_addresses": 728,
+        "selector_executions_both_paths": 6912,
+        "selector_results": [
+          0,
+          1
+        ],
+        "registration_modeled": true,
+        "evidence": "local/validation/heap-index-20261007-integrated-final/COMPLETE.json"
+      }
+    },
+    {
+      "address": "0x002B260C",
+      "source": "src/resource_allocate_register.c",
+      "build": "Separate 224-byte ARMv6K registration unit",
+      "instruction_level_cases": 5962,
+      "original_instruction_addresses": 56,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "selector_modeled": true,
+      "return_value_contract": "void; all three inspected callers overwrite r0",
+      "report": "docs/recovery/resource-allocate-register.md",
+      "evidence": "local/validation/allocate-register-20261007-direct/COMPLETE.json",
+      "retained_registry_integration": {
+        "scenarios": 324,
+        "binary_bytes": 3468,
+        "original_instruction_addresses": 784,
+        "registration_executions_both_paths": 5184,
+        "selector_executions_both_paths": 13824,
+        "selector_results": [
+          0,
+          1
+        ],
+        "conversion_topologies": [
+          "singleton",
+          "head",
+          "middle"
+        ],
+        "registration_modeled": false,
+        "selector_modeled": false,
+        "evidence": "local/validation/allocate-register-20261007-integrated-final/COMPLETE.json"
+      }
+    },
+    {
+      "address": "0x002B26F0",
+      "source": "src/resource_allocate_raw.c",
+      "build": "Separate ARMv6K router: 268 text bytes plus 24 read-only table bytes",
+      "instruction_level_cases": 8824,
+      "original_instruction_addresses": 85,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "lower_allocation_and_locks_modeled": true,
+      "retained_integration": false,
+      "report": "docs/recovery/resource-allocate-raw.md",
+      "evidence": "local/validation/allocate-raw-20261007-direct-final/COMPLETE.json"
+    },
+    {
+      "address": "0x002C3A98",
+      "source": "src/resource_heap_allocate.c",
+      "build": "Separate freestanding ARMv6K comparison unit",
+      "binary_bytes": 96,
+      "instruction_level_cases": 16144,
+      "original_instruction_addresses": 25,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "lower_dependencies_modeled": [
+        "0x00146CE0",
+        "0x00146CF0",
+        "0x00146D10",
+        "0x00146AD8"
+      ],
+      "retained_integration": false,
+      "report": "docs/recovery/resource-heap-allocate.md",
+      "evidence": "local/validation/heap-allocate-20261007-direct-final/COMPLETE.json"
+    },
+    {
+      "address": "0x00146CE0",
+      "source": "src/resource_heap_configure.c",
+      "build": "Three-entry freestanding ARMv6K comparison unit",
+      "combined_binary_bytes": 72,
+      "instruction_level_cases": 66992,
+      "original_instruction_addresses": 4,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "modeled_calls": 0,
+      "retained_integration": false,
+      "report": "docs/recovery/resource-heap-configure.md",
+      "evidence": "local/validation/heap-config-20261007-direct-final/COMPLETE.json"
+    },
+    {
+      "address": "0x00146CF0",
+      "source": "src/resource_heap_configure.c",
+      "build": "Three-entry freestanding ARMv6K comparison unit",
+      "combined_binary_bytes": 72,
+      "instruction_level_cases": 66992,
+      "original_instruction_addresses": 8,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "modeled_calls": 0,
+      "retained_integration": false,
+      "report": "docs/recovery/resource-heap-configure.md",
+      "evidence": "local/validation/heap-config-20261007-direct-final/COMPLETE.json"
+    },
+    {
+      "address": "0x00146D10",
+      "source": "src/resource_heap_configure.c",
+      "build": "Three-entry freestanding ARMv6K comparison unit",
+      "combined_binary_bytes": 72,
+      "instruction_level_cases": 66992,
+      "original_instruction_addresses": 4,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "modeled_calls": 0,
+      "retained_integration": false,
+      "report": "docs/recovery/resource-heap-configure.md",
+      "evidence": "local/validation/heap-config-20261007-direct-final/COMPLETE.json"
     }
   ],
   "recovered_regions": [

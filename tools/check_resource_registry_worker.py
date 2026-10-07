@@ -5,6 +5,10 @@ from ghidra_reference import ROOT, CODE_HASH, check_hash, java_command, local_pa
 from check_nkm_lookup import digest, run
 from check_resource_worker_completion import MUTANTS, RANGES
 from check_resource_release_convert import MUTATIONS as CONVERSION_MUTATIONS
+from check_resource_heap_index import MUTATIONS as SELECTOR_MUTATIONS
+from check_resource_allocate_register import MUTATIONS as REGISTRATION_MUTATIONS
+from check_resource_allocate_raw import MUTATIONS as RAW_MUTATIONS
+from check_resource_heap_allocate import MUTATIONS as HEAP_MUTATIONS
 
 NAMES = ["resource_request_if_dynamic", "resource_load_complete",
          "smt4_resource_request_complete", "smt4_file_create", "smt4_resource_release",
@@ -50,6 +54,19 @@ ALLOCATION_MUTATIONS["cached-outer-lock"] = ("resource_allocate.c",
 MUTATIONS.update(ALLOCATION_MUTATIONS)
 MUTATIONS.update({"conversion-" + key: ("resource_release_convert.c", *value)
                   for key, value in CONVERSION_MUTATIONS.items()})
+MUTATIONS.update({"selector-" + key: ("resource_heap_index.c", *value)
+                  for key, value in SELECTOR_MUTATIONS.items()})
+MUTATIONS.update({"registration-" + key: ("resource_allocate_register.c", *value)
+                  for key, value in REGISTRATION_MUTATIONS.items()})
+MUTATIONS.update({"raw-" + key: ("resource_allocate_raw.c", *RAW_MUTATIONS[key])
+                  for key in ("sixth-word", "reload-lock")})
+MUTATIONS["raw-heap-route"] = ("resource_allocate_raw.c", "0x1cu : 0x88u", "0x20u : 0x88u")
+MUTATIONS["raw-alignment"] = ("resource_allocate_raw.c", "case 0x100: alignment = 4;", "case 0x100: alignment = 8;")
+MUTATIONS.update({"heap-" + key: ("resource_heap_allocate.c", *HEAP_MUTATIONS[key])
+                  for key in ("subobject", "call-order", "size-alignment", "null-count",
+                              "counter-offset", "increment", "return")})
+MUTATIONS["heap-early-count"] = ("resource_heap_allocate.c",
+    "    void *result =", "    uint32_t saved = *(volatile uint32_t *)(uintptr_t)(heap + 0x54u);\n    void *result =")
 
 
 def main():
@@ -60,15 +77,39 @@ def main():
                         help="Execute both allocation layers for request packets and descriptors")
     parser.add_argument("--recover-conversion", action="store_true",
                         help="Execute metadata release conversion (requires --recover-allocation)")
+    parser.add_argument("--recover-selector", action="store_true",
+                        help="Execute heap selection (requires --recover-conversion)")
+    parser.add_argument("--recover-registration", action="store_true",
+                        help="Execute allocation registration (requires --recover-selector)")
+    parser.add_argument("--recover-raw-allocation", action="store_true",
+                        help="Execute raw allocation routing (requires --recover-registration)")
+    parser.add_argument("--recover-heap-allocation", action="store_true",
+                        help="Execute heap wrapper (requires --recover-raw-allocation)")
     parser.add_argument("--resubmit", action="store_true",
                         help="Run two retained batches with freed address reuse and interleaved pending nodes")
     args = parser.parse_args()
+    if args.recover_heap_allocation and not args.recover_raw_allocation:
+        parser.error("--recover-heap-allocation requires --recover-raw-allocation")
+    if args.mutant and args.mutant.startswith("heap-") and not args.recover_heap_allocation:
+        parser.error("Heap allocation mutants require --recover-heap-allocation")
     if args.mutant in ALLOCATION_MUTATIONS and not args.recover_allocation:
         parser.error("Allocation mutants require --recover-allocation")
     if args.recover_conversion and not args.recover_allocation:
         parser.error("--recover-conversion requires --recover-allocation")
+    if args.recover_selector and not args.recover_conversion:
+        parser.error("--recover-selector requires --recover-conversion")
+    if args.mutant and args.mutant.startswith("selector-") and not args.recover_selector:
+        parser.error("Selector mutants require --recover-selector")
     if args.mutant and args.mutant.startswith("conversion-") and not args.recover_conversion:
         parser.error("Conversion mutants require --recover-conversion")
+    if args.recover_registration and not args.recover_selector:
+        parser.error("--recover-registration requires --recover-selector")
+    if args.mutant and args.mutant.startswith("registration-") and not args.recover_registration:
+        parser.error("Registration mutants require --recover-registration")
+    if args.recover_raw_allocation and not args.recover_registration:
+        parser.error("--recover-raw-allocation requires --recover-registration")
+    if args.mutant and args.mutant.startswith("raw-") and not args.recover_raw_allocation:
+        parser.error("Raw allocation mutants require --recover-raw-allocation")
     output = local_path(args.output)
     if output.exists():
         raise FileExistsError("Choose new output under local/")
@@ -88,6 +129,18 @@ def main():
     if args.recover_conversion:
         sources += ["resource_release_convert"]
         names += ["smt4_resource_release_convert"]
+    if args.recover_selector:
+        sources += ["resource_heap_index"]
+        names += ["smt4_resource_heap_index"]
+    if args.recover_registration:
+        sources += ["resource_allocate_register"]
+        names += ["smt4_resource_allocate_register"]
+    if args.recover_raw_allocation:
+        sources += ["resource_allocate_raw"]
+        names += ["smt4_resource_allocate_raw"]
+    if args.recover_heap_allocation:
+        sources += ["resource_heap_allocate"]
+        names += ["smt4_resource_heap_allocate"]
     paths = [ROOT / "src" / (name + ".c") for name in sources]
     if args.mutant:
         filename, old, new = MUTATIONS[args.mutant]
@@ -96,7 +149,10 @@ def main():
         if content.count(old) != 1:
             raise RuntimeError("Mutation anchor")
         mutant = output / filename
-        mutant.write_text(content.replace(old, new))
+        content = content.replace(old, new)
+        if args.mutant == "heap-early-count":
+            content = content.replace("*count = *count + 1u;", "*count = saved + 1u;")
+        mutant.write_text(content)
         paths[paths.index(original)] = mutant
     definitions = {
         "smt4_table_resource_registry": 0x49382c,
@@ -131,6 +187,21 @@ def main():
     if args.recover_conversion:
         del definitions["smt4_resource_release_convert"]
         definitions["smt4_resource_heap_index"] = 0x2b3340
+    if args.recover_selector:
+        del definitions["smt4_resource_heap_index"]
+    if args.recover_registration:
+        del definitions["smt4_resource_allocate_register"]
+    if args.recover_raw_allocation:
+        del definitions["smt4_resource_allocate_raw"]
+        definitions.update({"smt4_resource_raw_state": 0x465170,
+                            "smt4_resource_heap_allocate": 0x2c3a98,
+                            "smt4_resource_fixed_allocate": 0x144978})
+    if args.recover_heap_allocation:
+        del definitions["smt4_resource_heap_allocate"]
+        definitions.update({"smt4_resource_heap_configure_fourth": 0x146ce0,
+                            "smt4_resource_heap_configure_fifth": 0x146cf0,
+                            "smt4_resource_heap_configure_sixth": 0x146d10,
+                            "smt4_resource_heap_allocate_inner": 0x146ad8})
     run([str(tool_dir / "arm-none-eabi-gcc.exe"), "-std=c11", "-O2", "-march=armv6k",
          "-marm", "-mfloat-abi=soft", "-ffreestanding", "-fno-builtin", "-fno-unwind-tables",
          "-fno-asynchronous-unwind-tables", "-ffunction-sections", "-fdata-sections",
@@ -139,8 +210,12 @@ def main():
          "-Wl,--undefined=smt4_file_worker", "-Wl,--undefined=smt4_worker_state0_io", "-Wl,--build-id=none",
          *[f"-Wl,--defsym,{name}=0x{value:x}" for name, value in definitions.items()],
          "-o", str(elf)], output, "build")
-    run([str(tool_dir / "arm-none-eabi-objcopy.exe"), "-O", "binary", "--only-section=.text",
+    run([str(tool_dir / "arm-none-eabi-objcopy.exe"), "-O", "binary", "--only-section=.text", "--only-section=.rodata",
          str(elf), str(binary)], output, "objcopy")
+    sections = run([str(tool_dir / "arm-none-eabi-objdump.exe"), "-h", str(elf)], output, "sections")
+    text_bytes = next(int(row.split()[2], 16) for row in sections.splitlines()
+                      if len(row.split()) >= 3 and row.split()[1] == ".text")
+    (output / "text-size.txt").write_text(f"{text_bytes}\n")
     run([str(tool_dir / "arm-none-eabi-objdump.exe"), "-d", str(elf)], output, "disassembly")
     ranges = RANGES + [(0x113d58, 0x113de8), (0x113e80, 0x114070),
         (0x114098, 0x114134), (0x114340, 0x114370), (0x33c844, 0x33c898),
@@ -150,6 +225,14 @@ def main():
         ranges += [(0x2c4bd8, 0x2c4c40), (0x2c5544, 0x2c5634)]
     if args.recover_conversion:
         ranges += [(0x1245f0, 0x1246f0)]
+    if args.recover_selector:
+        ranges += [(0x2b3340, 0x2b33d0)]
+    if args.recover_registration:
+        ranges += [(0x2b260c, 0x2b26f0)]
+    if args.recover_raw_allocation:
+        ranges += [(0x2b26f0, 0x2b2868)]
+    if args.recover_heap_allocation:
+        ranges += [(0x2c3a98, 0x2c3afc)]
     for start, stop in ranges:
         run([str(tool_dir / "arm-none-eabi-objdump.exe"), "-D", "-b", "binary", "-m", "arm",
              "--adjust-vma=0x100000", f"--start-address={start}", f"--stop-address={stop}",
@@ -166,11 +249,18 @@ def main():
                str(output), *(["resubmit"] if args.resubmit else []),
                *(["allocation"] if args.recover_allocation else []),
                *(["conversion"] if args.recover_conversion else []),
+               *(["selector"] if args.recover_selector else []),
+               *(["registration"] if args.recover_registration else []),
+               *(["raw-allocation"] if args.recover_raw_allocation else []),
+               *(["heap-allocation"] if args.recover_heap_allocation else []),
                "-log", str(output / "ghidra.log")], output, "comparison")
     if args.mutant:
         if "SMT4_REGISTRY_WORKER_OK" in log or "Registry worker scenario " not in log or "IllegalStateException" not in log:
             raise RuntimeError("Mutant not rejected by corpus assertion")
-        marker = {"mutant": args.mutant, "rejected": True, "source_sha256": digest(mutant)}
+        marker = {"mutant": args.mutant, "rejected": True, "source_sha256": digest(mutant),
+                  "binary_sha256": digest(binary),
+                  "assertion": next((line.strip() for line in log.splitlines()
+                                     if "Caused by: java.lang.IllegalStateException:" in line), "")}
         (output / "NEGATIVE.json").write_text(json.dumps(marker, indent=2) + "\n")
         print(json.dumps(marker))
         return
@@ -203,10 +293,50 @@ def main():
         expected_counts["original_instruction_addresses"] = 713
         conversion = json.loads((output / "conversion.json").read_text())
         if (conversion["conversion_executions_both_paths"] != allocations
-                or conversion["list_topologies"] != 4
+                or conversion["list_topologies"] != (3 if args.recover_registration else 4)
                 or conversion["selector_calls_both_paths"] != (6912 if args.resubmit else 3456)):
             raise RuntimeError("Incomplete conversion corpus")
         comparison.update(conversion)
+    if args.recover_registration:
+        registration = json.loads((output / "registration.json").read_text())
+        if registration != {"registration_executions_both_paths": allocations,
+                            "registration_selector_calls_both_paths": conversion["selector_calls_both_paths"],
+                            "registration_modeled": False}:
+            raise RuntimeError("Incomplete registration corpus")
+        comparison.update(registration)
+    if args.recover_selector:
+        # Selector adds 25 addresses; empty high-base direct-release ranges omit
+        # ten release-routing addresses exercised by the prior fixture.
+        expected_counts["original_instruction_addresses"] = 784 if args.recover_registration else 728
+        selector = json.loads((output / "selector.json").read_text())
+        if selector != {"selector_executions_both_paths": conversion["selector_calls_both_paths"] * (2 if args.recover_registration else 1),
+                        "selector_results": [0, 1], "selector_modeled": False}:
+            raise RuntimeError("Incomplete selector corpus")
+        comparison.update(selector)
+    if args.recover_raw_allocation:
+        expected_counts["original_instruction_addresses"] = 828
+        raw = json.loads((output / "raw-allocation.json").read_text())
+        if raw != {"raw_allocation_executions_both_paths": allocations,
+                   "raw_lower_calls_both_paths": allocations,
+                   "raw_lock_calls_both_paths": allocations * 2,
+                   "raw_original_instruction_addresses": 44,
+                   "raw_allocation_modeled": False, "raw_lower_dependencies_modeled": not args.recover_heap_allocation}:
+            raise RuntimeError("Incomplete raw allocation corpus")
+        comparison.update(raw)
+    if args.recover_heap_allocation:
+        expected_counts["original_instruction_addresses"] = 853
+        heap = json.loads((output / "heap-allocation.json").read_text())
+        if (heap["heap_allocation_executions_both_paths"] != allocations
+                or heap["heap_inner_calls_both_paths"] != allocations * 4
+                or heap["heap_counter_reads_both_paths"] != allocations
+                or heap["heap_counter_writes_both_paths"] != allocations
+                or heap["heap_counter_wraps_both_paths"] <= 0
+                or heap["heap_wrapping_addresses_both_paths"] <= 0
+                or heap["heap_original_instruction_addresses"] != 25
+                or heap["heap_allocation_modeled"] is not False
+                or heap["heap_inner_dependencies_modeled"] is not True):
+            raise RuntimeError("Incomplete heap allocation corpus")
+        comparison.update(heap)
     if any(comparison[key] != value for key, value in expected_counts.items()):
         raise RuntimeError("Incomplete comparison corpus")
     files = ["src/" + name + ".c" for name in sources]
@@ -214,15 +344,22 @@ def main():
     files += ["src/resource_sync.h", "src/resource_wait.h", "tools/check_resource_registry_worker.py",
               "tools/check_resource_worker_completion.py", "tools/check_nkm_lookup.py", "tools/ghidra_reference.py",
               "tools/check_resource_release_convert.py",
+              "tools/check_resource_heap_index.py", "tools/check_resource_allocate_register.py",
+              "tools/check_resource_allocate_raw.py",
+              "tools/check_resource_heap_allocate.py",
               "config/recovery-tools.json", "config/analysis-tools.json"]
     files += ["tools/ghidra/CompareResource" + name + ".java"
               for name in ("RegistryWorker", "RegistryRequest", "Create", "Sync", "Lifecycle")]
     manifest = {"reference_sha256": CODE_HASH, "binary_sha256": digest(binary),
-                "binary_bytes": binary.stat().st_size, "comparison": comparison,
+                "binary_bytes": binary.stat().st_size, "text_bytes": text_bytes, "comparison": comparison,
                 "binary_matching": False, "original_binary_helpers_required": False,
                 "resubmission": args.resubmit,
                 "recovered_allocation_layers": args.recover_allocation,
                 "recovered_release_conversion": args.recover_conversion,
+                "recovered_heap_selector": args.recover_selector,
+                "recovered_registration": args.recover_registration,
+                "recovered_raw_allocation": args.recover_raw_allocation,
+                "recovered_heap_allocation": args.recover_heap_allocation,
                 "method": "Retained registry submission/construction and continuous worker/I/O/completion/release; lower calls modeled",
                 "files_sha256": {name: digest(ROOT / name) for name in files}}
     (output / "COMPLETE.json").write_text(json.dumps(manifest, indent=2) + "\n")
