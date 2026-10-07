@@ -1,0 +1,65 @@
+# Local inputs, tool installations, and generated analysis material.
+/local/
+/Game/
+/dumps/
+/extracted/
+/romfs/
+/exefs/
+/keys/
+/saves/
+
+# Game containers and common extracted executable/console files.
+*.cia
+*.cci
+*.3ds
+*.cxi
+*.cfa
+*.ncch
+*.romfs
+*.exefs
+*.cro
+*.crs
+*.tik
+*.tmd
+code.bin
+.code
+exheader.bin
+boot9.bin
+boot9_prot.bin
+boot11.bin
+aeskeydb.bin
+seeddb.bin
+movable.sed
+
+# Ghidra projects contain copies of analyzed binaries.
+*.gpr
+*.rep/
+
+# Build and script output.
+/build/
+/out/
+/.venv/
+__pycache__/
+*.py[cod]
+.vs/
+.DS_Store
+Thumbs.db
+
+# Local development context and automation.
+AGENTS.md
+AGENTS.txt
+CLAUDE.md
+/.agents/
+/.codex/
+/docs/current-state.md
+/docs/project-plan.md
+/docs/work-ledger.md
+/docs/initial-investigation.md
+/docs/codex-supervisor.md
+/docs/recovery/supervisor-campaign-audit-*.md
+/config/supervisor-campaign.json
+/tools/codex_supervisor.py
+/tests/test_codex_supervisor.py
+/Start Supervisor.cmd
+/Stop after handoff.cmd
+/Supervisor Status.cmd

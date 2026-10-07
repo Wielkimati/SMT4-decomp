@@ -1,0 +1,26 @@
+{
+  "reference_name": "smt4-eu-base-v0",
+  "ctrtool": {
+    "version": "1.3.0",
+    "release_url": "https://github.com/3DSGuy/Project_CTR/releases/tag/ctrtool-v1.3.0",
+    "archive_url": "https://github.com/3DSGuy/Project_CTR/releases/download/ctrtool-v1.3.0/ctrtool-v1.3.0-win_x64.zip",
+    "archive_sha256": "8031dff3be72d0adb250fae1f969f27627e12a89ebc6dd074a15a75f87ddc949",
+    "executable_sha256": "79021f283b2199950eb22cf3c459806b9c8aaaf68f65c80100107d3454a1c224"
+  },
+  "packages": [
+    {
+      "role": "base",
+      "title_id": "0004000000141c00",
+      "title_version": 0,
+      "sha256": "22b5f3a2ecb53d84315c1c0283407df03ff0231ba3ec2ccf40708efad0e39f46",
+      "content_count": 2
+    },
+    {
+      "role": "dlc",
+      "title_id": "0004008c00141c00",
+      "title_version": 0,
+      "sha256": "20f1d0f10b443684e6b7bd133b1b18261cbcc0db547171703d6f4149de13915e",
+      "content_count": 15
+    }
+  ]
+}

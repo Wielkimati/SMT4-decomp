@@ -1,0 +1,33 @@
+{
+  "ghidra": {
+    "version": "12.1.4",
+    "directory": "local/tools/ghidra_12.1.4_PUBLIC",
+    "release_url": "https://github.com/NationalSecurityAgency/ghidra/releases/tag/Ghidra_12.1.4_build",
+    "archive_url": "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip",
+    "archive_sha256": "ddac49f903da9d5bac833e5cc79395098b9c33cfd3279be5f31bd00387d2d4db",
+    "utility_jar_sha256": "bb42a14285530c7d41373e1d130677bd2b90b34f32aedba5042f23663d652c7e"
+  },
+  "jdk": {
+    "version": "Temurin 21.0.12.1+1-LTS, Windows x64 HotSpot",
+    "directory": "local/tools/jdk-21.0.12.1+1",
+    "archive_url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_windows_hotspot_21.0.12.1_1.zip",
+    "archive_sha256": "f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e",
+    "java_exe_sha256": "82051fdab26319d77d20cc0065045d05ec00b3e3d05f44935d7c06b96b621d55",
+    "javaw_exe_sha256": "0d0448174d811b743faed2c1600b6174f33e65506e196b177effe0cd7a04cdb2"
+  },
+  "gdb": {
+    "distribution": "xPack GNU Arm Embedded GCC 15.2.1-1.1, Windows x64",
+    "version": "GNU gdb 16.3.90.20250906-git",
+    "directory": "local/tools/xpack-arm-none-eabi-gcc-15.2.1-1.1",
+    "release_url": "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/tag/v15.2.1-1.1",
+    "archive_url": "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v15.2.1-1.1/xpack-arm-none-eabi-gcc-15.2.1-1.1-win32-x64.zip",
+    "archive_sha256": "bae6a3d1667697ce750c3b13d6d26d80973ecedc2cc87bf04869e83447fd93ea",
+    "executable_sha256": "59fec74b86aff37290a26d82f9737d274122a6f4f22ad2ae5a5678c15a6215d4",
+    "purpose": "ARM debugger only; bundled GCC is not an original-compiler or matching decision"
+  },
+  "language": "ARM:LE:32:v6",
+  "compiler_spec": "default",
+  "compiler_spec_status": "Provisional analysis ABI, not identification of the original compiler",
+  "loader": "Ghidra BinaryLoader plus tools/ghidra/ImportSmt4.java",
+  "debugger_status": "Pinned ARM GDB installed; connects to Azahar and reads startup instructions/registers. See docs/runtime-reference.md for check results and limitations."
+}

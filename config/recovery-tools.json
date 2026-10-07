@@ -1,0 +1,14 @@
+{
+  "distribution": "xPack GNU Arm Embedded GCC 15.2.1-1.1",
+  "compiler_version": "15.2.1 20251203",
+  "directory": "local/tools/xpack-arm-none-eabi-gcc-15.2.1-1.1",
+  "provenance": "Same official archive already pinned in config/analysis-tools.json, gdb entry. Local executable fingerprints below.",
+  "purpose": "Freestanding ARMv6 behavior-comparison unit; not the original compiler and not a matching-toolchain decision.",
+  "executables": {
+    "arm-none-eabi-gcc.exe": "0113a7e828ff2bae4fe95b23be4f8aa5674ad3f28b3958a5e13e18d1287d7c2c",
+    "arm-none-eabi-objcopy.exe": "1fcd8a1a8b99597045ea3656cb8f4c03adc3ad22c7b35b4c2ba0de25c299618e",
+    "arm-none-eabi-objdump.exe": "38d1613463ec2108798b1c15fb7f9347b1906870357d48395f4ab2e3e0bc70e6",
+    "arm-none-eabi-nm.exe": "16306b83d5b7e8f9f7e82d1d3b9eb8783dbd8f0cca93f06fe8a45c5f1f5c9c15"
+  },
+  "nkm_sort_index_sha256": "194158b3cd8c31a24a65ecb1c66407a1444126ec07ab60661c9b1f8afc99c7a4"
+}
