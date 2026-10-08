@@ -10,13 +10,14 @@ void smt4_worker_state0_io(uint32_t *descriptor);
 extern const uint32_t smt4_worker_file_construction[4];
 extern uint32_t smt4_worker_io_lock_handle;
 extern uint32_t smt4_worker_io_busy;
+/* EU 0x002C244C: forwards to aligned allocation with fixed route words. */
 uint32_t *smt4_worker_object_allocate(uint32_t bytes);
-void smt4_worker_path_reset(uint32_t state[2]);
-uint32_t smt4_worker_path_measure(const char *path, uint32_t limit, uint32_t state[2]);
-uint32_t smt4_worker_path_convert(uint16_t *out, const char *path, uint32_t bytes, uint32_t state[2]);
+#include "resource_worker_path.h"
 uint32_t smt4_worker_file_open(uint32_t *handle, const uint16_t *path, uint32_t mode);
-uint32_t smt4_worker_data_allocate(uint32_t type, uint32_t alignment, uint32_t zero,
-                                  uint32_t size, uint32_t parameter, uint32_t direction);
+/* EU 0x002BF7EC, recovered variable-alignment wrapper. Older worker checks
+ * still model it. The fifth word is alignment; the second is a raw route option. */
+uint32_t smt4_worker_data_allocate(uint32_t first, uint32_t second, uint32_t third,
+                                  uint32_t size, uint32_t alignment, uint32_t direction);
 void smt4_worker_io_acquire(uint32_t handle);
 void smt4_worker_io_release(uint32_t handle);
 void smt4_worker_file_preclose(uint32_t handle);

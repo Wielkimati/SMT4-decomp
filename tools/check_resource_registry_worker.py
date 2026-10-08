@@ -169,7 +169,7 @@ def main():
         "smt4_worker_file_construction": 0x420870,
         "smt4_worker_io_lock_handle": 0x465124, "smt4_worker_io_busy": 0x465004,
         "smt4_worker_object_allocate": 0x2c244c,
-        "smt4_worker_path_reset": 0x710000, "smt4_worker_path_measure": 0x710004,
+        "smt4_worker_path_is_initial": 0x710000, "smt4_worker_path_measure": 0x710004,
         "smt4_worker_path_convert": 0x710008, "smt4_worker_file_open": 0x2bb944,
         "smt4_worker_data_allocate": 0x2bf7ec, "smt4_worker_io_acquire": 0x2c3afc,
         "smt4_worker_io_release": 0x2c3a78, "smt4_worker_file_preclose": 0x2bce9c,
@@ -341,7 +341,7 @@ def main():
         raise RuntimeError("Incomplete comparison corpus")
     files = ["src/" + name + ".c" for name in sources]
     files += ["src/" + name + ".h" for name in sources if (ROOT / "src" / (name + ".h")).exists()]
-    files += ["src/resource_sync.h", "src/resource_wait.h", "tools/check_resource_registry_worker.py",
+    files += ["src/resource_sync.h", "src/resource_wait.h", "src/resource_worker_path.h", "tools/check_resource_registry_worker.py",
               "tools/check_resource_worker_completion.py", "tools/check_nkm_lookup.py", "tools/ghidra_reference.py",
               "tools/check_resource_release_convert.py",
               "tools/check_resource_heap_index.py", "tools/check_resource_allocate_register.py",

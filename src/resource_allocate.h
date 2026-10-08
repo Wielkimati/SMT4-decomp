@@ -22,15 +22,25 @@ void *smt4_resource_heap_allocate(uint32_t heap, uint32_t size, uint32_t alignme
 uint32_t smt4_resource_heap_configure_fourth(uint32_t subobject, uint32_t value);
 uint32_t smt4_resource_heap_configure_fifth(uint32_t subobject, uint32_t value);
 uint32_t smt4_resource_heap_configure_sixth(uint32_t subobject, uint32_t value);
-/* EU 0x00146AD8 remains an explicit allocator model. */
+/* EU 0x00146AD8: bounded block selection; older checkers retain their model. */
 void *smt4_resource_heap_allocate_inner(uint32_t subobject, uint32_t size,
                                          uint32_t alignment);
-/* EU 0x00144978 remains modeled. Preserve r2/r3 without claiming consumption. */
+/* EU 0x0014F608: selected-block splitting, lists, metadata and optional clearing.
+ * Directly recovered; older arithmetic-only selection checks retain a model. */
+void *smt4_resource_heap_commit_block(uint32_t lists, uint32_t block,
+                                      uint32_t payload, uint32_t rounded_size,
+                                      uint32_t reverse);
+/* EU 0x0014699C: unlink allocation, insert/coalesce its physical extent.
+ * Return preserves observed r0 (insertion predecessor), not a known status. */
+uint32_t smt4_resource_heap_free_inner(uint32_t subobject, uint32_t payload);
+/* EU 0x002B33D8: call inner free then decrement +0x54 modulo u32; return count. */
+uint32_t smt4_resource_heap_free_counted(uint32_t heap, uint32_t payload);
+/* EU 0x00144978: first-fit fixed pool, then 128-byte rounding and record split.
+ * r2/r3 are unused; older checkers retain their fixed-allocation model. */
 void *smt4_resource_fixed_allocate(uint32_t object, uint32_t size,
                                    uint32_t third, uint32_t fourth);
 /* EU 0x002B260C: append raw header and update allocation accounting.
  * Older allocation checker modes retain their registration models. */
 void smt4_resource_allocate_register(void *raw);
-/* EU 0x002C3B9C: zero byte count bytes; result is not consumed. */
-void smt4_resource_allocate_zero(void *address, uint32_t count);
+#include "resource_clear.h" /* EU 0x002C3B9C and consumed 0x002C4B88. */
 #endif

@@ -125,17 +125,45 @@ toolchain nor rules out future matching. Full original ABI/compiler identity,
 language of origin, runtime-library provenance and broader struct layouts remain
 open.
 
-Consumed quotient behavior does not establish a complete division ABI. The
-[remainder interface](recovery/resource-order.md) adapts original r1 to C r0;
+The [bounded table ABI investigation](recovery/table-abi.md) now records
+original quotient/count arguments, register preservation, returns and stack use,
+plus exact compiler/runtime marker-search limits. Run
+`python tools/check_table_abi.py --output local/validation/NEW-TABLE-ABI` to build
+and regress the complete table unit, then exercise the ABI sequentially. The
+original returns quotient/remainder in r0/r1 without a stack frame; the existing
+GCC C quotient returns r0, leaves divisor in r1 and uses eight stack bytes.
+It is suitable at the consumed C boundary, not a dual-result binary replacement.
+The observed integer boundary is compatible with relevant AAPCS/RTABI conventions;
+compiler vendor/version and exact runtime provenance are unresolved. Retain GCC
+for behavioral comparison; no matching compiler is selected. ELF attributes of
+the rebuilt unit do not establish original floating-point or C++ conventions.
+
+The [remainder interface](recovery/resource-order.md) adapts original r1 to C r0;
 full signed/zero-divisor behavior and state seeding remain unclaimed. ARM exclusive
 instructions need a reviewed native synchronization boundary. The table unit's
-original 32-bit addresses/registry layouts now have the bounded host research
-adapter above; a reviewed native import and lifetime/service policy remain open.
+original 32-bit addresses/registry layouts have the bounded host research
+adapter above; a private file-to-memory evidence bridge, reviewed native import
+and lifetime/service policy remain open.
 
-Before G3 closes, complete its required G1/G2 evidence, define a useful recovered
-unit and its dependencies, investigate compiler fingerprints, repeat preparation
-into a fresh ignored directory, and establish reviewed repository baseline
-commits. Independent compiler/host-boundary research can continue while live
+The A09 fresh-preparation check now passes: all 17 contents and 20,423 files
+reproduce G0, with 78 public tests passing from a data-free source export. Use
+`tools/check_reference_repeat.py --repeat local/reference-eu-g3-NEW --output local/validation/NEW-REPEAT`
+after preparing a fresh root; see [the report](recovery/reference-repeat.md).
+Both complete preparations use CTRTool. A new project Python decoder now
+independently reproduces the pinned expanded executable byte-for-byte:
+`python tools/check_code_decoder.py --output local/validation/NEW-CODE-DECODER`.
+See [decoder provenance, synthetic checks and limits](recovery/code-decoder.md).
+Independent NCCH/RomFS extraction now reproduces the pinned table:
+`python tools/check_ncch_romfs.py --output local/validation/NEW-NCCH-ROMFS`.
+The existing private host bridge accepts this file through `--table PATH` with
+unchanged hash admission. See [extraction evidence and limits](recovery/ncch-romfs.md).
+Independent ExeFS/CIA decoding, IVFC verification and full filesystem coverage
+remain unvalidated.
+
+Before G3 closes, complete its required G1/G2 evidence, investigate compiler
+fingerprints/full ABI and matching, and
+review the existing repository baselines for source transfer.
+Independent compiler/host-boundary research can continue while live
 checks are deferred. No revision-pinned port handoff exists yet. Keep repository
 histories separate and choose the transfer mechanism from the actual source
 boundary and provenance/license decisions.

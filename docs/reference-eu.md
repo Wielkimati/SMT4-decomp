@@ -53,6 +53,37 @@ is local at `local/reference-eu/inputs.json`.
   use the same pinned CTRTool implementation; this is not independent decoder
   validation or a second complete extraction run.
 
+A09 update, 2026-10-08: a second complete preparation now exists at
+`local/reference-eu-g3-20261008`. All 17 contents and 20,423 output files match;
+both full output trees were rehashed, and input/output inventories are
+byte-identical to G0. Selected executable, ExHeader and NKMSortIndex identities
+also match. Both complete preparations still use the same pinned CTRTool 1.3.0.
+See
+[the repeatability report](recovery/reference-repeat.md) for exact evidence,
+the reusable comparison command and data-free regression results.
+
+Independent decoder update, 2026-10-08: the new project Python reverse-LZ decoder
+reproduces every expanded executable byte and the pinned SHA-256 from the
+compressed input. ExHeader compression bit 0 is set; the compressed footer
+declares a 2,141,461-byte span, 11-byte footer, 1,491,600-byte growth and 91-byte
+uncompressed prefix. The resulting 3,633,152 bytes agree with allocated segment
+pages. See [the decoder report](recovery/code-decoder.md) and
+`local/validation/code-decoder-20261008/COMPLETE.json`. This independently checks
+executable expansion only; it did not validate container/filesystem decoding.
+
+Independent table extraction update, 2026-10-08: a new project reader reproduces
+all 50,400 NKMSortIndex bytes directly from preserved application NCCH
+`base/content.0000.00000000` (SHA-256
+`92d6feba05dbcacda8efb7d51dab6c2da35c079e4e2130848e9a56b1b96c824a`).
+Independently read NCCH metadata confirms the executable/application identity,
+version 2, 512-byte media units and NoCrypto flag. RomFS begins at `0x24C000`,
+level 3 at `0x24D000`, and the table at NCCH offset `0x19D46C0`. The pinned
+table hash remains `194158b3cd8c31a24a65ecb1c66407a1444126ec07ab60661c9b1f8afc99c7a4`.
+See [the extraction report](recovery/ncch-romfs.md) and
+`local/validation/ncch-romfs-20261008-final/COMPLETE.json`. This checks NCCH
+extents and the selected RomFS path; independent ExeFS/CIA decoding, IVFC hash
+verification and full filesystem traversal remain unvalidated.
+
 Tool provenance is pinned in [reference-eu.json](../config/reference-eu.json).
 The official Windows x64 ZIP matched upstream SHA-256
 `8031dff3be72d0adb250fae1f969f27627e12a89ebc6dd074a15a75f87ddc949`.

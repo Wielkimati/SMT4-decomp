@@ -1,5 +1,18 @@
 # Worker state-zero I/O region
 
+The subsequent [locale configuration package](resource-worker-locale-config.md)
+adds `--recover-locale-config`, implying bootstrap and its connected chain.
+It executes category configuration/query/restoration before conversion/open;
+older modes retain their documented fixtures. This extension adds three entry
+contracts separately from the historical adapted region described below.
+
+The subsequent [prefix mutation package](resource-worker-prefix.md) adds
+`--recover-prefix`, implying configuration and its connected chain. Registration
+now supplies the matching record before worker conversion/open. Direct and
+persistent probes also execute removal; initial registry storage, backend
+disposal and diagnostic delivery remain explicit fixtures/models. This adds two
+entry contracts; it does not broaden older mode evidence.
+
 2026-10-07. EU base v0 expanded-code SHA-256
 `834938d18d2b7c688311c46c27bed813d0d7a9f8e3cbb61da8a6a3f23d360ebd`.
 Owner: decomp; dependencies: the worker static trace and
@@ -11,6 +24,57 @@ Owner: decomp; dependencies: the worker static trace and
 original uses the containing worker's registers and stack. This adds a second
 adapted region of the same partially recovered worker, **no entry-point
 contract**. The entry-point count remains thirty-two.
+
+2026-10-08: optional `--recover-allocation` now executes the recovered object,
+aligned and data allocators inside this region, with guarded retained metadata.
+See [object allocation and connected I/O](resource-worker-object-allocate.md).
+The default 3,456-case corpus and historical dependency boundary below are
+unchanged; the new bounded mode is separate evidence.
+
+The subsequent `--recover-file-methods` mode executes size/seek/read adapters
+`0x003DFC54`/`0x00354F70`/`0x00354F9C` with the allocation mode. The caller now
+declares size's original 64-bit return and explicitly consumes its low word.
+See [file methods](resource-worker-file-methods.md) for lower file/diagnostic
+models and the size-failure boundary. Older modes retain their historical scope.
+
+The [lower file position package](resource-worker-file-position.md) now executes
+size/cache, seek dispatch and position through the optional
+`--recover-file-position` mode, retaining OS size/read and diagnostic models.
+This report retains its original I/O-mode evidence boundary.
+
+The subsequent [read-loop package](resource-worker-file-read.md) adds optional
+`--recover-file-read`, executing lower read `0x002BB864` with the position chain.
+Scripted OS read responses supply actual bounded payload segments; zero requests,
+partial success and errors now determine cursor/count effects through recovered
+source. Older modes retain their original read models and payload fixtures.
+
+The subsequent [open/path package](resource-worker-file-open.md) adds optional
+`--recover-file-open`, executing prefix lookup, UTF-16 length and open dispatch
+with a modeled backend virtual open.
+
+The subsequent [cleanup/destruction package](resource-worker-file-cleanup.md)
+adds optional `--recover-file-cleanup`. It executes close dispatch and deleting
+destructor/cleanup/null release with valid synthetic backend objects. Backend
+close and allocator release remain explicit models; returning tagged diagnostic
+continuation is conditional, with separate terminal probes and original-only
+execution to `SVC 0x3C`. Older modes retain their historical boundaries.
+
+The subsequent [path package](resource-worker-path.md) adds optional
+`--recover-path`. It executes the predicate, measurement/conversion/byte-decoder
+chain and fixed accessors with bounded byte-table paths. Locale callbacks remain
+scripted in direct probes; initialization remains unrecovered. The caller and
+all builders now use `path_is_initial` for the former misleading `path_reset`
+name. The historical model below still belongs to the older comparison modes.
+
+The subsequent [locale package](resource-worker-locale.md) adds optional
+`--recover-locale`, executing the default byte callback and mapping with private
+hash-bound tables through conversion/open. Bootstrap remains a fixture; older
+modes retain their original path/callback models and domains.
+
+The [locale bootstrap package](resource-worker-locale-bootstrap.md) adds
+`--recover-locale-bootstrap`, executing context publication before the connected
+conversion/open chain. It implies locale recovery; older modes retain their
+initialization fixtures and the private callback relocation remains explicit.
 
 ## Reconstructed behavior
 
@@ -28,7 +92,7 @@ The lower conversion routines remain models; no encoding implementation is claim
 
 Opening uses object `+4`, converted path and mode 1. A negative open result
 stores state 5 but does not bypass size, seek, allocation or read. The size
-method's 32-bit result becomes descriptor `+0x18`; seek receives zero offset and
+method's low 32-bit result word becomes descriptor `+0x18`; seek receives zero offset and
 origin. A nonzero descriptor data pointer skips allocation. For allocation,
 only exact flags 1/17 select type `0x10000`; other values select `0x100`.
 Only exact flags 16/17 select direction 0; other values select 1. Alignment is

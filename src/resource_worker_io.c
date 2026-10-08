@@ -26,7 +26,7 @@ void smt4_worker_state0_io(uint32_t *d)
     uint16_t path[262], *out = path;
     const char *in = (const char *)d + 0x2c;
     uint32_t state[2] = {0, 0};
-    smt4_worker_path_reset(state);
+    smt4_worker_path_is_initial(state);
     for (;;) {
         uint32_t bytes = smt4_worker_path_measure(in, 0x105, state);
         if (bytes == 0 || smt4_worker_path_convert(out, in, bytes, state) == 0)
@@ -40,7 +40,7 @@ void smt4_worker_state0_io(uint32_t *d)
     if (result >> 31)
         d[0] = 5;
     o = object(d);
-    d[6] = ((uint32_t (*)(uint32_t *))method(o, 0x24))(o);
+    d[6] = (uint32_t)((uint64_t (*)(uint32_t *))method(o, 0x24))(o);
     o = object(d);
     ((void (*)(uint32_t *, uint64_t, uint32_t))method(o, 0x0c))(o, 0, 0);
     if (d[3] == 0) {

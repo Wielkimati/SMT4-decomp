@@ -87,7 +87,7 @@ def main():
             "smt4_worker_file_construction": 0x420870,
             "smt4_worker_io_lock_handle": 0x465124, "smt4_worker_io_busy": 0x465004,
             "smt4_worker_object_allocate": 0x2c244c,
-            "smt4_worker_path_reset": 0x710000, "smt4_worker_path_measure": 0x710004,
+            "smt4_worker_path_is_initial": 0x710000, "smt4_worker_path_measure": 0x710004,
             "smt4_worker_path_convert": 0x710008, "smt4_worker_file_open": 0x2bb944,
             "smt4_worker_data_allocate": 0x2bf7ec, "smt4_worker_io_acquire": 0x2c3afc,
             "smt4_worker_io_release": 0x2c3a78, "smt4_worker_file_preclose": 0x2bce9c,
@@ -162,7 +162,7 @@ def main():
                        "tools/ghidra/CompareResourceLifecycle.java", "tools/check_nkm_lookup.py",
                        "tools/ghidra_reference.py", "config/recovery-tools.json", "config/analysis-tools.json"]
     if args.recover_io:
-        files += ["src/resource_worker_io.h"]
+        files += ["src/resource_worker_io.h", "src/resource_worker_path.h"]
     if args.recover_loop:
         files += ["src/resource_worker_loop.h", "src/resource_wait.h"]
     manifest = {"reference_sha256": CODE_HASH, "binary_sha256": digest(binary),
