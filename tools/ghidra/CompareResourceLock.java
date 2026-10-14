@@ -28,7 +28,7 @@ public class CompareResourceLock extends CompareResourceLifecycle {
     // and handle. These schedules make no kernel or hardware timing claim.
     class Plan {
         List<Event> events=new ArrayList<>();
-        long current, handle, response;
+        long current, handle, response, returnedR2;
         boolean pending;
         int loads, stores, calls;
         void add(String kind,long value) { events.add(new Event(kind,value,false)); }
@@ -58,6 +58,8 @@ public class CompareResourceLock extends CompareResourceLifecycle {
                 events.add(new Event("store",value,success));
                 if(!success) continue;
                 current=value; add("write",value);
+                if(phase==4)returnedR2=value;
+                else if(phase!=1)returnedR2=phase==0?DATA:0;
                 if(phase==1) { phase=3; arbitrate(1,mutate); }
                 else {
                     if(phase==4 && (int)value>1) arbitrate(0,mutate);
@@ -66,7 +68,7 @@ public class CompareResourceLock extends CompareResourceLifecycle {
             }
         }
         void arbitrate(int operation,boolean mutate) {
-            add("handle",handle); add("arbitrate",operation); calls++;
+            add("handle",handle); add("arbitrate",operation); calls++;if(operation==0)returnedR2=0xdeadbeefL;
             if(mutate) current=(0x89abcdefL+calls)&MASK;
             handle=(handle+0x1020304L)&MASK;
         }
@@ -175,6 +177,7 @@ public class CompareResourceLock extends CompareResourceLifecycle {
             require(word(memory(DATA,4),0)==plan.current && word(memory(HANDLE,4),0)==plan.handle,"Final oracle words");
             require(Arrays.equals(memory(DATA-32,96),expected),"Final lock/guard bytes");
             if(!plan.pending) {
+                require(register("r2")==plan.returnedR2,"Base lock r2 return");
                 require(register("sp")==STACK,"SP restoration");
                 for(int r=4;r<=11;r++) require(register("r"+r)==0x12340000L+r,"Callee saved");
             } else require(thread.getCounter().getOffset()!=RETURN,"Pending path returned");

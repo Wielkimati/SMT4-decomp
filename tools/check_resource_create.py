@@ -1,6 +1,7 @@
 """Build/compare descriptor creation with modeled allocation/synchronization/string dependencies."""
 import argparse
 import json
+import resource_create_sync_build as sync_build
 from ghidra_reference import ROOT, CODE_HASH, check_hash, java_command, local_path
 from check_nkm_lookup import digest, run
 
@@ -11,7 +12,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True)
     parser.add_argument("--project-dir", default="local/ghidra/smt4-eu")
+    parser.add_argument("--recover-strings", action="store_true", help="Execute path copy and reused length source")
+    parser.add_argument("--recover-sync", action="store_true", help="Execute constructor synchronization/result source")
+    parser.add_argument("--recover-result-diagnostic", action="store_true", help="Recover diagnostic producer; implies --recover-sync")
+    parser.add_argument("--mutant", choices=("copy-nul", "copy-alignment", "copy-return", *sync_build.MUTANTS, *sync_build.DIAGNOSTIC_MUTANTS))
     args = parser.parse_args()
+    if args.recover_result_diagnostic:
+        args.recover_sync = True
+    if args.mutant in sync_build.DIAGNOSTIC_MUTANTS and not args.recover_result_diagnostic:
+        parser.error("diagnostic mutants require --recover-result-diagnostic")
+    if args.mutant in sync_build.MUTANTS and not args.recover_sync:
+        parser.error("sync mutants require --recover-sync")
+    if args.mutant and args.mutant not in (*sync_build.MUTANTS, *sync_build.DIAGNOSTIC_MUTANTS) and not args.recover_strings:
+        parser.error("--mutant requires --recover-strings")
     output, project = local_path(args.output), local_path(args.project_dir)
     if output.exists():
         raise FileExistsError("Choose new output under local/")
@@ -24,6 +37,23 @@ def main():
         check_hash(tool_dir / name, expected)
     java = java_command()
     output.mkdir(parents=True)
+    copy_source = ROOT / "src/resource_path_copy.c"
+    if args.mutant and args.mutant not in (*sync_build.MUTANTS, *sync_build.DIAGNOSTIC_MUTANTS):
+        source = copy_source.read_text()
+        old, new = {
+            "copy-nul": ("*output++ = byte;", "if (byte != 0) *output++ = byte;"),
+            "copy-alignment": ("if ((((uintptr_t)output | (uintptr_t)input) & 3u) == 0)", "if (0)"),
+            "copy-return": ("return destination;", "return destination + 1;"),
+        }[args.mutant]
+        if source.count(old) != (1 if args.mutant == "copy-alignment" else 2):
+            raise RuntimeError("Mutant anchor changed")
+        copy_source = output / "mutant-copy.c"
+        copy_source.write_text(source.replace(old, new))
+    string_build = ([str(copy_source), str(ROOT / "src/resource_worker_service_acquire.c"),
+                     "-I" + str(ROOT / "src"), "-ffunction-sections", "-Wl,--gc-sections",
+                     "-Wl,--defsym,smt4_file_path_length=smt4_worker_service_name_length",
+                     *("-Wl,--undefined=" + name for name in NAMES)] if args.recover_strings else
+                    ["-Wl,--defsym,smt4_file_path_length=0x2c32e4", "-Wl,--defsym,smt4_file_path_copy=0x2bf8c0"])
     elf, binary = output / "resource-create.elf", output / "resource-create.bin"
     run([str(tool_dir / "arm-none-eabi-gcc.exe"), "-std=c11", "-O2", "-march=armv6",
          "-marm", "-mfloat-abi=soft", "-ffreestanding", "-fno-builtin", "-fno-unwind-tables",
@@ -33,13 +63,11 @@ def main():
          "-Wl,--defsym,smt4_file_sync_handle=0x465010",
          "-Wl,--defsym,smt4_file_list_head=0x46500c",
          "-Wl,--defsym,smt4_file_path_format=0x2b066c",
-         "-Wl,--defsym,smt4_file_acquire=0x2c4350",
-         "-Wl,--defsym,smt4_file_release=0x2c54a4",
-         "-Wl,--defsym,smt4_file_check_result=0x2c54bc",
+         *sync_build.build_args(output, args.recover_sync, args.mutant, args.recover_result_diagnostic),
          "-Wl,--defsym,smt4_file_allocate=0x2c4bd8",
          "-Wl,--defsym,smt4_file_clear=0x2c4b84",
-         "-Wl,--defsym,smt4_file_path_length=0x2c32e4",
-         "-Wl,--defsym,smt4_file_path_copy=0x2bf8c0",
+         *string_build,
+         *([str(ROOT / "src/resource_wait.c"), "-Wl,--defsym,smt4_file_sleep=0x1382e4", "-Wl,--defsym,smt4_file_spin=0x1382bc"] if args.recover_result_diagnostic else []),
          "-Wl,--defsym,smt4_resource_format=0x2be850",
          "-o", str(elf)], output, "build")
     run([str(tool_dir / "arm-none-eabi-objcopy.exe"), "-O", "binary", "--only-section=.text",
@@ -51,20 +79,35 @@ def main():
              "--adjust-vma=0x100000", f"--start-address={start}", f"--stop-address={stop}",
              str(ROOT / "local/reference-eu/base/0000/exefs/code.bin")],
             output, f"original-{start:08x}-disassembly")
+    if args.recover_strings:
+        for start, stop in ((0x2bf8c0, 0x2bf928), (0x2c32e4, 0x2c3344)):
+            run([str(tool_dir / "arm-none-eabi-objdump.exe"), "-D", "-b", "binary", "-m", "arm",
+                 "--adjust-vma=0x100000", f"--start-address={start}", f"--stop-address={stop}",
+                 str(ROOT / "local/reference-eu/base/0000/exefs/code.bin")],
+                output, f"original-{start:08x}-disassembly")
+    if args.recover_result_diagnostic:
+        run([str(tool_dir / "arm-none-eabi-objdump.exe"), "-D", "-b", "binary", "-m", "arm",
+             "--adjust-vma=0x100000", "--start-address=0x1284a8", "--stop-address=0x1284e0",
+             str(ROOT / "local/reference-eu/base/0000/exefs/code.bin")],
+            output, "original-001284a8-disassembly")
     symbols = run([str(tool_dir / "arm-none-eabi-nm.exe"), "-n", str(elf)], output, "symbols")
     if " U " in symbols:
         raise RuntimeError("Unresolved symbols")
     entries = {row.split()[2]: int(row.split()[0], 16) for row in symbols.splitlines()
                if len(row.split()) == 3 and row.split()[1] == "T"}
     (output / "entries.txt").write_text("".join(f"{entries[name]}\n" for name in NAMES))
+    if args.recover_sync:
+        sync_build.save_entries(output, entries, args.recover_result_diagnostic)
+    if args.recover_strings:
+        (output / "string-entries.txt").write_text(f'{entries["smt4_file_path_copy"]}\n{entries["smt4_worker_service_name_length"]}\n')
     log = run([*java, "ghidra.app.util.headless.AnalyzeHeadless", str(project), "SMT4-EU",
                "-process", "code.bin", "-readOnly", "-noanalysis", "-scriptPath",
                str(ROOT / "tools/ghidra"), "-postScript", "CompareResourceCreate.java",
-               str(output), "-log", str(output / "ghidra.log")], output, "comparison")
+               str(output), *(["strings"] if args.recover_strings else []), *(["sync"] if args.recover_sync else []), "-log", str(output / "ghidra.log")], output, "comparison")
     if "SMT4_CREATE_COMPARE_OK" not in log or not (output / "comparison.json").is_file():
         raise RuntimeError("Comparison failed; inspect comparison.log")
     comparison = json.loads((output / "comparison.json").read_text())
-    if comparison["create_cases"] != 10080 or comparison["original_instruction_addresses"] != 103:
+    if comparison["create_cases"] != 10080 or comparison["original_instruction_addresses"] != (151 if args.recover_strings else 103) + (41 if args.recover_sync else 0) + (12 if args.recover_result_diagnostic else 0):
         raise RuntimeError("Incomplete comparison corpus")
     manifest = {"reference_sha256": CODE_HASH, "binary_sha256": digest(binary),
                 "binary_bytes": binary.stat().st_size, "comparison": comparison,
@@ -75,7 +118,25 @@ def main():
                     "src/resource_create.c", "src/resource_create.h", "src/resource_sync.h",
                     "tools/check_resource_create.py", "tools/ghidra/CompareResourceCreate.java",
                     "tools/ghidra/CompareResourceLifecycle.java",
+                    "tools/resource_create_sync_build.py",
                     "config/recovery-tools.json", "config/analysis-tools.json")}}
+    manifest["path_copy_recovered"] = args.recover_strings
+    manifest["length_source_reused"] = args.recover_strings
+    if args.recover_strings:
+        strings = json.loads((output / "strings-comparison.json").read_text())
+        if (not strings["ordered_accesses_checked"] or strings["direct_pairs"] != 440
+                or strings["original_string_sites"] != 48 or strings["copy_calls_both_paths"] != 15344
+                or strings["length_calls_both_paths"] != 20336):
+            raise RuntimeError("Missing concrete string evidence")
+        manifest["strings"] = strings
+        manifest["method"] = "Original/rebuilt ARM execution; copy and reused length execute source with UQSUB8 host instruction support; allocation, synchronization, clear, formatting remain modeled"
+        for name in ("src/resource_path_copy.c", "src/resource_worker_service_acquire.c",
+                     "src/resource_worker_service_acquire.h", "tools/ghidra/ResourcePathStrings.java"):
+            manifest["files_sha256"][name] = digest(ROOT / name)
+    if args.recover_sync:
+        sync_build.manifest_evidence(output, manifest, True, args.recover_result_diagnostic)
+    if args.mutant:
+        raise RuntimeError("Mutant unexpectedly passed")
     (output / "COMPLETE.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest, indent=2))
 

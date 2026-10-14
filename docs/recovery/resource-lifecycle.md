@@ -24,7 +24,7 @@ address `0x00493840` and size, and sets its policy byte to one. Further writers:
 | `0x0033C844` / backend | Passes `&loaded`, callback `0x0019F990`, and entry context to `0x002B6820` for a null zero-policy entry | Request wrapper reconstructed; scheduling unverified |
 | `0x0019F990` / `0x0019F994` | Stores callback r0 into `entry+4` and r2 into `entry+8` using ARM STM | Reconstructed and compared directly |
 | `0x002A49E0` / `0x002A4A24` | Releases a nonnull zero-policy entry, then clears only its loaded address | Reconstructed and compared with backend interception |
-| `0x0025C848` / `0x0025C8D8`, `0x0025C8E0` | Reload path replaces loaded address and size if sizes differ; equal-size path copies into the old allocation and releases the new one | Statically analyzed; backend/global-state dependencies remain |
+| `0x0025C848` / `0x0025C8D8`, `0x0025C8E0` | Reload path replaces loaded address and size if sizes differ; equal-size path copies into the old allocation and releases the new one | Subsequently recovered with concrete gate/state dependencies; file/release/copy modeled; see [reload report](table-resource-reload.md) |
 
 Thus the individual load wrapper does **not** populate NKMSortIndex from its
 initial policy-one state. The bulk loader's store is the concrete static path

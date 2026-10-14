@@ -56,18 +56,30 @@ void smt4_worker_state0_io(uint32_t *d)
     result = ((uint32_t (*)(uint32_t *, uint32_t *, uint32_t, uint32_t))
               method(o, 0x28))(o, &bytes_read, d[3], d[6]);
     smt4_worker_io_busy = 0;
-    smt4_worker_io_release(smt4_worker_io_lock_handle);
+    /* Original 0x0011401C..0x00114044 retains release's scratch r2 through
+     * the diagnostic call. Capture it explicitly; ordinary C void-call rules
+     * otherwise lose this observable callback word. Release remains external. */
+    register uint32_t release_r0 __asm__("r0") = smt4_worker_io_lock_handle;
+    register uint32_t release_r2 __asm__("r2");
+    __asm__ volatile ("bl smt4_worker_io_release"
+                      : "+r" (release_r0), "=r" (release_r2)
+                      : : "r1", "r3", "r12", "lr", "cc", "memory");
+    uint32_t break_payload = release_r2;
     if (result >> 31)
         d[0] = 5;
     o = object(d);
     if (o[1] & ~UINT32_C(1)) {
         if (o[1] & 1)
-            smt4_worker_file_preclose(o[1]);
+            smt4_worker_file_preclose(o[1], 0, break_payload);
         smt4_worker_file_close(o[1] & ~UINT32_C(1));
         o[1] = 0;
     }
     o = object(d);
     if (o)
-        ((void (*)(uint32_t *))method(o, 4))(o);
+        /* In this adapted region's retained domain the same object's handle
+         * is now zero or tag-only, so the destructor's diagnostic payload is
+         * dead. A callback replacing d[0x12c/4] with another tagged object is
+         * outside that domain; its post-service scratch r2 is not recovered. */
+        ((void (*)(uint32_t *, uint32_t, uint32_t))method(o, 4))(o, 0, 0);
     /* State 3 / file-object clear / state 4 belong to the enclosing step. */
 }

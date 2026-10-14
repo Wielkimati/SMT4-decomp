@@ -134,7 +134,7 @@ def main():
                 "method": "Original/rebuilt backend lifetime with executed prefix registration/removal and open dispatch; archive services, locks, clearing and diagnostics modeled",
                 "files_sha256": {name: digest(ROOT / name) for name in (
                     "src/resource_worker_backend.c", "src/resource_worker_backend.h", "src/resource_recursive_lock.h",
-                    "src/resource_worker_prefix.c", "src/resource_worker_prefix.h",
+                    "src/resource_worker_prefix.c", "src/resource_worker_prefix.h", "src/resource_break.h",
                     "src/resource_worker_file_open.c", "src/resource_worker_file_open.h",
                     "tools/check_resource_worker_backend.py", "tools/ghidra/CompareResourceWorkerBackend.java",
                     "tools/ghidra/CompareResourceLifecycle.java", "tools/ghidra/CompareResourceSync.java",

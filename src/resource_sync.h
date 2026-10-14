@@ -13,11 +13,14 @@ uint32_t smt4_file_set_flags(uint32_t *descriptor, uint32_t value);
 uint32_t smt4_file_set_parameter(uint32_t *descriptor, uint32_t value);
 uint32_t smt4_file_failed(const uint32_t *descriptor);
 
+/* ARM 0x002B0674: full length first, then colon in at most eight bytes.
+ * Requires readable storage through the length helper's final aligned word. */
+uint32_t smt4_resource_path_has_prefix(uint32_t path);
+
 /* Unrecovered dependency boundary. Names describe observed roles only. */
 extern uint8_t smt4_resource_path_mode;
 extern const char smt4_resource_path_format[];
 void smt4_resource_clear(void *buffer, uint32_t length);
-uint32_t smt4_resource_path_has_prefix(uint32_t path);
 int smt4_resource_format(char *destination, const char *format, ...);
 uint32_t *smt4_file_create(const char *path, uint32_t mode);
 void smt4_file_wait(uint32_t *descriptor);

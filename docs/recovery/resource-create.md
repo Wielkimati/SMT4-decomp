@@ -1,5 +1,10 @@
 # Resource descriptor creation
 
+2026-10-13 update: [wait consumed-return extension](resource-wait-return.md)
+establishes wait/arbitration r0/r2 and replaces wait/initializer models in
+create/chain `--recover-result-diagnostic`. Earlier evidence below retains its
+historical boundaries; lower locks and kernel outcomes remain modeled.
+
 2026-10-06. EU base v0 expanded-code SHA-256
 `834938d18d2b7c688311c46c27bed813d0d7a9f8e3cbb61da8a6a3f23d360ebd`.
 Entry `0x002B0494`, ARM; original virtual addresses throughout. Names describe
@@ -121,6 +126,17 @@ Mutated source stays local and no negative run produces a success marker.
 
 ## Next work
 
+2026-10-13: the optional `--recover-strings` mode now executes recovered path
+copy `0x002BF8C0` and reused length `0x002C32E4` inside this constructor.
+The 664-byte unit passes all 10,080 constructor pairs plus 352 direct copy and
+88 length pairs, with exact string access traces and 151 original sites.
+See [path-copy recovery](resource-path-copy.md) and
+`local/validation/path-copy-20261013-create-accepted/COMPLETE.json`.
+The default mode and historical evidence above retain their models.
+Allocation, clear, synchronization, result handling and formatting remain modeled
+in the new mode. Its next source task is the synchronization/result boundary
+at `0x002C4350`, `0x002C54A4` and `0x002C54BC`, as detailed in that report.
+
 Subsequent [wait/delay recovery](resource-wait.md) now passes 191 wait and 14,479
 delay comparisons in 120 bytes. `0x002BB4F0` is a delay selector, correcting the
 earlier callback hypothesis. Signal/sleep/spin boundaries remain modeled. The subsequent [integrated chain](resource-chain.md) now passes 3,888 comparisons
@@ -130,3 +146,27 @@ This constructor package brought the total to twenty-one bounded contracts;
 the subsequent wait/delay package raises it to twenty-three.
 Live verification and G1/G2 remain deferred/unpassed. Compiler/ABI research,
 host address boundaries, actual I/O/allocation and full 3DS rebuilding remain open.
+
+## Constructor synchronization mode (2026-10-13)
+
+`--recover-sync` now executes recovered acquire `0x002C4350`, release
+`0x002C54A4` and result dispatcher `0x002C54BC`, and composes with
+`--recover-strings`. See [synchronization recovery](resource-create-sync.md)
+for exact SVC marshalling, failure publication, caller-address/r2 transport,
+ABI and connected comparison evidence. Kernel outcomes, diagnostic delivery and
+returning break policy remain explicit models. Allocation, clear and formatting
+remain modeled in these modes; the chain retains outer-prefix and timing models.
+The older default and string-only boundaries above remain unchanged.
+
+## Result diagnostic producer mode (2026-10-13)
+
+`--recover-result-diagnostic` implies `--recover-sync` and executes new producer
+`0x001284A8..0x001284D8`, composing with `--recover-strings`. See
+[result diagnostic recovery](resource-result-diagnostic.md) for record store
+order/widths, type narrowing, unknown-byte preservation and the returned-r2
+contract. The [delivery return extension](resource-delivery-return.md) now
+executes `0x002AD7E8` and reused process/request/copy/connect/delay source in
+this mode, replacing its original r0/r2 outcome model. Lower lock/wait returned
+registers, TLS/kernel/sleep, break, allocation, clear, formatting and outer-chain
+policies remain explicit boundaries. Earlier modes keep their historical models
+and evidence.

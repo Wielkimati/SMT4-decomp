@@ -20,8 +20,8 @@ MUTANTS = {
     "exclusive-endpoint": ("resource_release.c", "address <= first +", "address < first +"),
     "short-read-size": ("resource_worker_io.c", "smt4_worker_io_busy = 0;", "d[6] = bytes_read;\n    smt4_worker_io_busy = 0;"),
     "cached-close-handle": ("resource_worker_io.c",
-        "if (o[1] & 1)\n            smt4_worker_file_preclose(o[1]);\n        smt4_worker_file_close(o[1] & ~UINT32_C(1));",
-        "uint32_t saved = o[1];\n        if (saved & 1)\n            smt4_worker_file_preclose(saved);\n        smt4_worker_file_close(saved & ~UINT32_C(1));"),
+        "if (o[1] & 1)\n            smt4_worker_file_preclose(o[1], 0, break_payload);\n        smt4_worker_file_close(o[1] & ~UINT32_C(1));",
+        "uint32_t saved = o[1];\n        if (saved & 1)\n            smt4_worker_file_preclose(saved, 0, break_payload);\n        smt4_worker_file_close(saved & ~UINT32_C(1));"),
     "skip-io": ("resource_worker.c", "smt4_worker_state0_io(d);", "(void)d;"),
     "restart-head": ("resource_worker_loop.c", "node = smt4_file_worker_step(node);", "smt4_file_worker_step(node); node = (uint32_t *)(uintptr_t)smt4_file_list_head;"),
     "skip-reset": ("resource_worker_loop.c", "smt4_worker_event_reset(smt4_worker_event);", "(void)0;"),
@@ -162,7 +162,7 @@ def main():
                        "tools/ghidra/CompareResourceLifecycle.java", "tools/check_nkm_lookup.py",
                        "tools/ghidra_reference.py", "config/recovery-tools.json", "config/analysis-tools.json"]
     if args.recover_io:
-        files += ["src/resource_worker_io.h", "src/resource_worker_path.h"]
+        files += ["src/resource_worker_io.h", "src/resource_worker_path.h", "src/resource_break.h"]
     if args.recover_loop:
         files += ["src/resource_worker_loop.h", "src/resource_wait.h"]
     manifest = {"reference_sha256": CODE_HASH, "binary_sha256": digest(binary),

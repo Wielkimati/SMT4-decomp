@@ -58,6 +58,7 @@ public class CompareResourceWorkerPrefix extends CompareResourceWorkerLocaleConf
             initialize(rebuilt,0,new byte[0x144]); destroyed=false; active=false; trace.clear();
             registryFixtures(table,global);
         }
+        void initializeConnectedRegistry(boolean rebuilt) throws Exception {}
         @Override void setupAllocation(byte[] initial,long length,long allocation) {
             super.setupAllocation(initial,length,allocation);
             byte[] table=occupied(); int slot=(cases/6)%32; put(table,slot*16+8,0);
@@ -65,7 +66,7 @@ public class CompareResourceWorkerPrefix extends CompareResourceWorkerLocaleConf
             long pc=thread.getCounter().getOffset(),flags=register("cpsr");
             long[] saved=new long[15]; for(int r=0;r<15;r++) saved[r]=register(r==13 ? "sp" : r==14 ? "lr" : "r"+r);
             boolean old=executing;
-            try { mutate(rebuiltFixture,0,name('r',0),0,BACKEND,0x123456ffL,1,false,0); connectedRegistrations++; }
+            try { initializeConnectedRegistry(rebuiltFixture); mutate(rebuiltFixture,0,name('r',0),0,BACKEND,0x123456ffL,1,false,0); connectedRegistrations++; }
             catch(Exception e) { throw new IllegalStateException("Worker I/O case connected registry",e); }
             finally {
                 executing=old;
@@ -107,10 +108,16 @@ public class CompareResourceWorkerPrefix extends CompareResourceWorkerLocaleConf
             int steps=0,diagnostics=0,disposeCalls=0; boolean returned=true;
             while(thread.getCounter().getOffset()!=RETURN) {
                 long pc=thread.getCounter().getOffset();
-                if(pc==DIAGNOSTIC) {
+                if(pc==precloseTarget(rebuilt)) {
                     require(overlong && ++diagnostics==1,"Overlong diagnostic predicate");
                     require(Arrays.equals(memory(PREFIX_TABLE-16,544),initialTable) && Arrays.equals(memory(BACKEND_STATE-16,48),initialState),"Diagnostic precedes publication");
                     require((register("sp")&7)==0,"Diagnostic stack alignment");
+                    if(recoverBreak) {
+                        long payload=kind==0 ? ((long)name[7])&MASK : 8;
+                        require(register("r2")==payload,"Prefix caller r2 provenance");
+                        if(!breakCall(this,rebuilt,0,payload,terminal,0,0)) { returned=false; terminalNames++; break; }
+                        returningNames++; continue;
+                    }
                     if(terminal) { returned=false; terminalNames++; break; }
                     returningNames++; externalReturn(0xfedcba98L); continue;
                 }

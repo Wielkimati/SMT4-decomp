@@ -119,7 +119,7 @@ def main():
     paths = ["src/resource_lazy_pool.c", "src/resource_lazy_pool.h", "src/resource_pool_initialize.c", "src/resource_pool_initialize.h", "src/unsigned_quotient.c", "src/unsigned_quotient.h",
              "src/resource_worker_backend.c", "src/resource_worker_backend.h", "src/resource_recursive_lock.c", "src/resource_recursive_lock.h",
              "src/resource_lock.c", "src/resource_signal.h", "src/resource_clear.c", "src/resource_clear.h",
-             "src/resource_worker_prefix.c", "src/resource_worker_prefix.h", "src/resource_worker_file_open.c", "src/resource_worker_file_open.h",
+             "src/resource_worker_prefix.c", "src/resource_worker_prefix.h", "src/resource_break.h", "src/resource_worker_file_open.c", "src/resource_worker_file_open.h",
              "tools/check_resource_lazy_pool.py", "tools/ghidra/CompareResourceLazyPool.java",
              "tools/ghidra/CompareResourceWorkerBackend.java", "tools/ghidra/CompareResourceSync.java", "tools/ghidra/CompareResourceLifecycle.java",
              "tools/check_nkm_lookup.py", "tools/ghidra_reference.py", "config/analysis-tools.json", "config/recovery-tools.json"]

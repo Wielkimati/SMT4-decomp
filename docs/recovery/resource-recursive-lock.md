@@ -183,3 +183,13 @@ zero-divisor, pathological wrapping/nonterminating lists, backing storage owners
 and global startup explicit. Reuse this package's pool and exclusive harnesses.
 Do not treat adjacent archive-factory listings in the audit as an admitted task,
 and do not repeat recursive acquire/release or start extraction/port work.
+
+### Consumed acquire r2 follow-up (2026-10-13)
+
+The base acquire extension now establishes the previously excluded fast/slow r2
+transport through this existing wrapper. See
+[the base-lock report](resource-lock.md#acquire-consumed-r2-extension-2026-10-13)
+and `local/validation/acquire-return-20261013-recursive-final/COMPLETE.json`.
+The final checker varies incoming scratch words and transports them across the
+two persistent lifetimes, retaining the 164-case corpus and four pending prefixes.
+No new recursive entry or arbitrary delivery-caller provenance is claimed.

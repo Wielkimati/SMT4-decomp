@@ -38,6 +38,11 @@ void smt4_resource_fill_words(uint32_t address, uint32_t count, uint32_t value)
         *(volatile uint8_t *)(uintptr_t)address = (uint8_t)value;
 }
 
+void smt4_resource_aligned_zero(void *destination, uint32_t count)
+{
+    smt4_resource_fill_words((uint32_t)(uintptr_t)destination, count, 0);
+}
+
 void smt4_resource_allocate_zero(void *destination, uint32_t count)
 {
     uint32_t address = (uint32_t)(uintptr_t)destination;

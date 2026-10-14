@@ -6,6 +6,8 @@
 void smt4_worker_backend_clear(uint32_t *start, uint32_t end, uint32_t value);
 /* Aligned shared body, with low-halfword/low-byte tail stores. */
 void smt4_resource_fill_words(uint32_t address, uint32_t count, uint32_t value);
+/* EU 0x002C4B84 aligned zero entry; result register is unconsumed. */
+void smt4_resource_aligned_zero(void *destination, uint32_t count);
 /* Exact byte count, including unaligned starts; result register is unconsumed. */
 void smt4_resource_allocate_zero(void *destination, uint32_t count);
 #endif

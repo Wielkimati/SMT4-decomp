@@ -192,7 +192,10 @@ optional clear `0x00139F54` explicit until separately recovered. The checked
 accessor reloads +4 after its zero-value diagnostic; do not assume that call
 returns without a stated model.
 
-Registry startup remains open. GNU decoding at `0x003F3568` shows registry
+The array/record construction and registry slice are now recovered in
+[registry initialization](resource-registry-initialize.md), with an explicit
+mode replacing initial key/backend fixtures. Broader startup remains open.
+The original continuation finding follows: GNU decoding at `0x003F3568` shows registry
 construction through Thumb array helper `0x002C5FAC` and record initializer
 `0x003561F0`, followed by several pool/lock initializers and destructor
 registration. The saved Ghidra project has no containing function at the

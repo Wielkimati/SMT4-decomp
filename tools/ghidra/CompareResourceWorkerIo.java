@@ -49,6 +49,12 @@ public class CompareResourceWorkerIo extends CompareResourceSync {
         }
         long openTarget(boolean path) { return 0x2bb944; }
         long closeTarget(boolean path) { return 0x2b9450; }
+        long precloseTarget(boolean path) { return 0x2bce9c; }
+        long releasePayload() { return 0xdeadbeefL; }
+        long executePreclose(boolean path,int effect) throws Exception {
+            if(effect==2) writeWord(OBJ+4,precloseReplacement());
+            return 0;
+        }
         long precloseReplacement() { return 0x81234561L; }
         void executeClose(boolean path,long handle) throws Exception {}
         void executeDestroy(boolean path) throws Exception {}
@@ -119,7 +125,8 @@ public class CompareResourceWorkerIo extends CompareResourceSync {
                 long pc=thread.getCounter().getOffset(),result=0;
                 if(allocationStep(pc,rebuiltPath)) continue;
                 if(rebuiltPath) {
-                    if(pc==openTarget(true)) pc=0x2bb944;
+                    if(pc==precloseTarget(true)) pc=0x2bce9c;
+                    else if(pc==openTarget(true)) pc=0x2bb944;
                     else if(pc==closeTarget(true)) pc=0x2b9450;
                     else if(pc==pathTarget(true,0)) pc=0x2b9486;
                     else if(pc==pathTarget(true,1)) pc=0x2b9468;
@@ -178,7 +185,7 @@ public class CompareResourceWorkerIo extends CompareResourceSync {
                     writeWord(register("r1"),length^MASK); writeWord(LOCK,0x81234567L); result=read;
                 } else if(pc==0x2bce9c) {
                     require(register("r0")==handle,"Preclose handle");
-                    if(effect==2) writeWord(OBJ+4,precloseReplacement());
+                    result=executePreclose(rebuiltPath,effect);
                 } else if(pc==0x2b9450) {
                     long expected=effect==2 && (handle&1)!=0 ? precloseReplacement()&~1L : handle&~1L;
                     require(register("r0")==expected,"Close handle reload/mask");
@@ -191,7 +198,9 @@ public class CompareResourceWorkerIo extends CompareResourceSync {
                 } else ext=false;
                 if(ext) {
                     require((register("sp")&7)==0,"Lower call alignment");
-                    event(pc); externalReturn(result); continue;
+                    event(pc); externalReturn(result);
+                    if(pc==0x2c3a78) register("r2",releasePayload());
+                    continue;
                 }
                 require(rebuiltPath ? within(pc,4,BUILD,BUILD+codeSize) : originalCode(pc),"Unexpected PC "+Long.toHexString(pc));
                 if(!rebuiltPath) visited.add(pc);

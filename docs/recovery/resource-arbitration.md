@@ -1,5 +1,10 @@
 # Arbitration argument marshalling
 
+2026-10-13 update: [wait consumed-return extension](resource-wait-return.md)
+establishes wait/arbitration r0/r2 and replaces wait/initializer models in
+create/chain `--recover-result-diagnostic`. Earlier evidence below retains its
+historical boundaries; lower locks and kernel outcomes remain modeled.
+
 2026-10-06. EU base v0 expanded-code SHA-256
 `834938d18d2b7c688311c46c27bed813d0d7a9f8e3cbb61da8a6a3f23d360ebd`.
 This adds the twenty-seventh bounded recovered contract. Names are project

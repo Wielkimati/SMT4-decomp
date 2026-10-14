@@ -16,6 +16,8 @@ public class CompareResourceChain extends CompareResourceSync {
     static final long ALLOCATE=0x2c4bd8, CLEAR=0x2c4b84, LENGTH=0x2c32e4;
     static final long COPY=0x2bf8c0, FORMAT=0x2be850, SIGNAL=0x2c4298, SLEEP=0x1382e4;
     static final long[] PENDING={0,1,2,3,6,0x80000000L,0xffffffffL};
+    ResourcePathStrings strings;
+    ResourceCreateSync sync;
     long createEntry, waitEntry;
     int chainCases, pendingCases;
     @Override boolean originalCode(long pc) {
@@ -25,6 +27,13 @@ public class CompareResourceChain extends CompareResourceSync {
     static boolean prefix(String s) { return s.substring(0,Math.min(8,s.length())).contains(":"); }
     static byte[] z(String s) { return (s+"\0").getBytes(StandardCharsets.US_ASCII); }
     class ChainMachine extends SyncMachine {
+
+        @Override public boolean handleMissingUserop(ghidra.pcode.emu.PcodeThread<byte[]> t,
+                ghidra.program.model.pcode.PcodeOp op,ghidra.pcode.exec.PcodeFrame frame,String name,
+                ghidra.pcode.exec.PcodeUseropLibrary<byte[]> library) {
+            if(sync!=null && sync.diagnostic!=null && sync.diagnostic.delivery.exclusive(this,t,op,name))return true;
+            return super.handleMissingUserop(t,op,frame,name,library);
+        }
         int nodes, polls;
         boolean waiting;
         List<Long> calls=new ArrayList<>();
@@ -48,6 +57,8 @@ public class CompareResourceChain extends CompareResourceSync {
                 AddressSpace space,byte[] offset,int size,byte[] value) {
             long DESC=descriptorAddress(), SIZE=sizeAddress(), NODES=nodeAddress();
             long a=Utils.bytesToLong(offset,offset.length,false);
+            if(sync!=null && sync.write(a,size,Utils.bytesToLong(value,size,false)))return;
+            if(strings!=null)strings.write(a,size);
             if(within(a,size,STACK-0x1000,STACK)) return;
             require(within(a,size,DESC,DESC+0x144) || within(a,size,SIZE,SIZE+4) ||
                 within(a,size,HEAD,HEAD+4) || (nodes>0 && within(a,size,
@@ -59,6 +70,8 @@ public class CompareResourceChain extends CompareResourceSync {
                 AddressSpace space,byte[] offset,int size) {
             long DESC=descriptorAddress(), NODES=nodeAddress();
             long a=Utils.bytesToLong(offset,offset.length,false);
+            if(sync!=null && sync.read(a,size))return;
+            if(strings!=null)strings.read(a,size);
             if(waiting && a==DESC && size==4) polls++;
             if(within(a,size,NODES,NODES+nodes*0x200)) return;
             super.beforeLoad(t,op,space,offset,size);
@@ -85,6 +98,7 @@ public class CompareResourceChain extends CompareResourceSync {
             memory(NODES,list); writeWord(HEAD,nodes==0 ? 0 : NODES);
             long handle=Integer.toUnsignedLong(rng.nextInt()),laterHandle=handle^0x87654321L;
             writeWord(HANDLE,handle); memory(MODE,new byte[]{(byte)mode});
+            if(sync!=null)sync.setup(this,seed);
             byte[] input=new byte[256]; Arrays.fill(input,(byte)0xd7);
             System.arraycopy(z(path),0,input,0,path.length()+1); memory(PATH,input);
             chainArguments(hasSize,flags,parameter);
@@ -121,11 +135,15 @@ public class CompareResourceChain extends CompareResourceSync {
             CompareResourceCreate.record(expectedWrites,DESC+4,4,1);
             CompareResourceCreate.record(expectedWrites,DESC+36,4,(flags&1)|((flags&2)<<3));
             CompareResourceCreate.record(expectedWrites,DESC+40,4,kind==1 ? 4 : parameter);
+            if(strings!=null && prefix(formatted))for(int i=0;i<=formatted.length();i++)
+                CompareResourceCreate.record(expectedWrites,DESC+0x2c+i,1,i==formatted.length()?0:formatted.charAt(i));
             int steps=0,signals=0,sleeps=0,creates=0,waits=0,cleanups=0;
             long buffer=0,lastResult=0; boolean firstFormat=true;
             executing=true;
             while(thread.getCounter().getOffset()!=RETURN) {
                 long pc=thread.getCounter().getOffset();
+                if(strings!=null)pc=strings.boundary(rebuiltPath,pc);
+                if(sync!=null)pc=sync.boundary(rebuiltPath,pc);
                 if(pc==signalEntry(rebuiltPath)) pc=SIGNAL;
                 if(pc==(rebuiltPath ? createEntry : 0x2b0494)) {
                     creates++; require(register("r0")==buffer && register("r1")==0,"Create arguments");
@@ -162,7 +180,7 @@ public class CompareResourceChain extends CompareResourceSync {
                         require(word(memory(register("r1"),4),0)==handle && register("r2")==1 && register("r3")==0,"Acquire arguments");
                         require(word(memory(register("sp"),8),0)==0xffffffffL && word(memory(register("sp"),8),4)==0xffffffffL,"Timeout");
                         require(writes.isEmpty() && Arrays.equals(memory(DESC,0x144),dirty),"Early mutation");
-                        writeWord(register("r0"),0x13579bdf); writeWord(HANDLE,laterHandle); result=acquireResult; lastResult=result;
+                        if(sync==null)writeWord(register("r0"),0x13579bdf); writeWord(HANDLE,laterHandle); result=acquireResult; lastResult=result;
                     } else if(pc==CHECK) {
                         require(register("r0")==lastResult && register("r1")==1,"Result handling");
                     } else if(pc==ALLOCATE) {
@@ -178,12 +196,12 @@ public class CompareResourceChain extends CompareResourceSync {
                         else {
                             require(register("r0")==DESC+0x2c && register("r1")== (pc==COPY ? buffer : 0x2b066c),"Constructor string arguments");
                             if(pc==FORMAT) require(register("r2")==buffer,"Constructor format input");
-                            memory(DESC+0x2c,z(stored)); result=pc==COPY ? DESC+0x2c : stored.length();
+                            if(strings==null || pc!=COPY)memory(DESC+0x2c,z(stored)); result=pc==COPY ? DESC+0x2c : stored.length();
                         }
                     } else if(pc==RELEASE) {
                         snapshot(created,expectedList,initialSize,"Before release");
                         require(within(register("r0"),4,register("sp"),STACK-16) && register("r1")==laterHandle,"Release reread");
-                        writeWord(register("r0"),0x2468ace0); result=releaseResult; lastResult=result;
+                        if(sync==null)writeWord(register("r0"),0x2468ace0); result=releaseResult; lastResult=result;
                     } else {
                         snapshot(expected,expectedList,initialSize,"Before timing boundary");
                         if(pc==SIGNAL) {
@@ -196,8 +214,12 @@ public class CompareResourceChain extends CompareResourceSync {
                         if(word(expected,0)==4 || word(expected,0)==5) { put(expected,12,data); put(expected,24,length); }
                         if(pc!=SIGNAL || !executesSignal()) memory(DESC,expected);
                     }
-                    if(pc==SIGNAL && executesSignal())
+                    if(sync!=null && (pc==ACQUIRE || pc==RELEASE || pc==CHECK))
+                        sync.execute(this,rebuiltPath,pc,result,pc==ACQUIRE?0x13579bdf:0x2468ace0);
+                    else if(pc==SIGNAL && executesSignal())
                         steps+=signalInstructions(rebuiltPath,seed,signals,expected,steps);
+                    else if(strings!=null && (pc==LENGTH || pc==COPY))
+                        strings.execute(this,rebuiltPath,pc,formatted.getBytes(StandardCharsets.US_ASCII));
                     else externalReturn(result);
                     continue;
                 }
@@ -230,6 +252,8 @@ public class CompareResourceChain extends CompareResourceSync {
         for(int i=0;i<9;i++) require(within(Long.parseLong(lines.get(i)),4,BUILD,BUILD+codeSize),"Entry extent");
         for(int i=0;i<6;i++) entries[i]=Long.parseLong(lines.get(i));
         createEntry=Long.parseLong(lines.get(6)); waitEntry=Long.parseLong(lines.get(7));
+        if(Arrays.asList(getScriptArgs()).contains("strings"))strings=new ResourcePathStrings(this,out,currentProgram);
+        if(Arrays.asList(getScriptArgs()).contains("sync"))sync=new ResourceCreateSync(this,out,currentProgram);
         ChainMachine a=new ChainMachine(mapped,binary),b=new ChainMachine(mapped,binary);
         String[] paths={"", "test/table.tbb", "rom:/test.tbb", "1234567:x", "12345678:x", "x".repeat(250)};
         long[] flags={0,1,2,3,0xfc,0x80000002L,0xffffffffL};
@@ -256,6 +280,8 @@ public class CompareResourceChain extends CompareResourceSync {
             require(visited.contains(pc),"Unvisited synchronous instruction "+Long.toHexString(pc));
         for(long[] range:new long[][]{{0x2b0494,0x2b0630},{0x1181b0,0x1181ec},{0x2bb4f0,0x2bb504}})
             for(long pc=range[0];pc<range[1];pc+=4) require(visited.contains(pc),"Unvisited chain instruction "+Long.toHexString(pc));
+        if(sync!=null)sync.evidence(out,false);
+        if(strings!=null)strings.evidence(out,false);
         Files.writeString(out.resolve("visited.txt"),String.join("\n",visited.stream().map(v->String.format("%08x",v)).toList())+"\n");
         Files.writeString(out.resolve("comparison.json"),String.format(Locale.ROOT,
             "{\"chain_cases\":%d,\"pending_prefix_cases\":%d,\"original_instruction_addresses\":%d,\"max_steps\":%d,\"dependency_calls_both_paths\":%d,\"create_wait_delay_intercepted\":false,\"allocation_sync_strings_timing_intercepted\":true,\"live_verified\":false}\n",

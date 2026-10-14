@@ -2,7 +2,7 @@
 #include "resource_worker_prefix.h"
 _Static_assert(UINTPTR_MAX == UINT32_MAX, "Requires original 32-bit addresses");
 
-static uint64_t normalized_key(const uint8_t *name)
+static uint64_t normalized_key(const uint8_t *name, uint32_t removing)
 {
     uint8_t normalized[8];
     uint32_t i;
@@ -16,7 +16,10 @@ static uint64_t normalized_key(const uint8_t *name)
     }
     const uint8_t *text = normalized;
     if (i == 8) {
-        smt4_worker_prefix_diagnostic();
+        /* Original registration leaves the eighth signed byte in r2; removal
+         * leaves its loop index (8). These are callback-visible payloads. */
+        uint32_t payload = removing ? 8u : (uint32_t)(int32_t)(int8_t)normalized[7];
+        smt4_worker_prefix_diagnostic(0, 0, payload);
         text = smt4_worker_prefix_fallback;
     }
     uint32_t low = 0, high = 0;
@@ -34,7 +37,7 @@ static uint64_t normalized_key(const uint8_t *name)
 uint32_t smt4_worker_prefix_register(const uint8_t *name, uint32_t backend,
                                    uint32_t flag, uint32_t retain)
 {
-    uint64_t key = normalized_key(name);
+    uint64_t key = normalized_key(name, 0);
     if (key == 0)
         return UINT32_C(0xe0e046bc);
     for (uint32_t i = 0; i < 32; ++i) {
@@ -56,7 +59,7 @@ uint32_t smt4_worker_prefix_register(const uint8_t *name, uint32_t backend,
 
 uint32_t smt4_worker_prefix_remove(const uint8_t *name)
 {
-    uint64_t key = normalized_key(name);
+    uint64_t key = normalized_key(name, 1);
     /* Unlike registration and resolution, zero keys are searched. */
     for (uint32_t i = 0; i < 32; ++i) {
         uint32_t *record = smt4_worker_prefix_table[i];

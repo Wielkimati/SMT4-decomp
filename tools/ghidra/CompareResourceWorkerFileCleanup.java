@@ -13,7 +13,11 @@ public class CompareResourceWorkerFileCleanup extends CompareResourceWorkerFileO
     static final long[] CLEAN_END={0x2bb824,0x2bb85c,0x354fb8,0x2b9468,0x2b2590};
     static final long CLOSE_OBJECT=0x90b000,CLOSE_VT=0x90b100,CLOSE_SERVICE=0x750000;
     static final long RELEASE=0x2c43b4,DIAGNOSTIC=0x2bce9c;
-    long[] cleanEntries=new long[5];
+    long[] cleanEntries=new long[5],breakEntries=new long[3];
+    boolean recoverBreak;
+    boolean breakCall(CleanupMachine m,boolean path,long reason,long payload,boolean terminal,int effect,long replacement) throws Exception {
+        throw new IllegalStateException("Break recovery requires CompareResourceBreak");
+    }
     int cleanupCases,terminalCleanupCases,connectedCloses,connectedDestructors,cleanupSteps,serviceCloses,releaseCalls;
     @Override boolean originalCode(long pc) {
         for(int i=0;i<CLEAN.length;i++) if(within(pc,4,CLEAN[i],CLEAN_END[i])) return true;
@@ -21,12 +25,23 @@ public class CompareResourceWorkerFileCleanup extends CompareResourceWorkerFileO
     }
     @Override IoMachine makeMachine(byte[] mapped,byte[] binary) { return new CleanupMachine(mapped,binary); }
     class CleanupMachine extends OpenMachine {
-        boolean releasedObject;
+        boolean releasedObject,breakActive;
+        int breakReads,breakWrites;
+        long cleanupPayload=0x12340002L;
+        @Override long releasePayload() { return recoverBreak ? new long[]{0,1,0x80000000L,MASK}[(cases/4)%4] : super.releasePayload(); }
+        @Override long precloseTarget(boolean path) { return recoverBreak && path ? breakEntries[0] : DIAGNOSTIC; }
+        @Override long executePreclose(boolean path,int effect) throws Exception {
+            if(!recoverBreak) return super.executePreclose(path,effect);
+            require(register("r2")==releasePayload(),"Worker release r2 reaches break");
+            breakCall(this,path,0,releasePayload(),false,effect==2 ? 1 : 0,precloseReplacement());
+            return register("r0");
+        }
         CleanupMachine(byte[] mapped,byte[] binary) { super(mapped,binary); }
         @Override long closeTarget(boolean path) { return path ? cleanEntries[3] : CLEAN[3]; }
         @Override long precloseReplacement() { return CLOSE_OBJECT+65; }
         @Override public void beforeLoad(PcodeThread<byte[]> t,PcodeOp op,AddressSpace space,byte[] offset,int size) {
             long a=Utils.bytesToLong(offset,offset.length,false);
+            if(breakActive && a==0x44e450 && size==4) breakReads++;
             require(!releasedObject || !within(a,size,OBJ,OBJ+24),"Object read after release");
             if(within(a,size,CLOSE_OBJECT-16,CLOSE_OBJECT+512)) return;
             super.beforeLoad(t,op,space,offset,size);
@@ -50,7 +65,7 @@ public class CompareResourceWorkerFileCleanup extends CompareResourceWorkerFileO
         boolean executeCleanup(boolean path,int kind,long argument,long initialHandle,long replacement,
                 int effect,boolean terminal) throws Exception {
             releasedObject=false;
-            long returnPc=register("lr"),sp=register("sp");
+            long returnPc=register("lr"),sp=register("sp"),payload=register("r2");
             long[] saved=new long[8]; for(int r=4;r<=11;r++) saved[r-4]=register("r"+r);
             byte[] objectBefore=memory(OBJ,24),backendBefore=memory(CLOSE_OBJECT-16,528);
             boolean objectKind=kind<=2,closes=objectKind && (initialHandle&~1L)!=0;
@@ -59,11 +74,16 @@ public class CompareResourceWorkerFileCleanup extends CompareResourceWorkerFileO
             int diags=0,closeCalls=0,releases=0,steps=0;
             while(thread.getCounter().getOffset()!=returnPc) {
                 long pc=thread.getCounter().getOffset();
-                if(pc==DIAGNOSTIC) {
+                if(pc==precloseTarget(path)) {
                     require(diagnostic && ++diags==1 && register("r0")==initialHandle,"Cleanup diagnostic predicate/argument");
                     require((register("sp")&7)==0 && closeCalls==0 && releases==0,"Cleanup diagnostic order/alignment");
                     require(Arrays.equals(objectBefore,memory(OBJ,24)),"Object changed before diagnostic");
                     trace.add("cleanup-diagnostic:"+initialHandle); dependencyCalls++;
+                    if(recoverBreak) {
+                        boolean returned=breakCall(this,path,0,payload,terminal,effect,replacement);
+                        if(!returned) { terminalCleanupCases++; return false; }
+                        continue;
+                    }
                     if(terminal) { terminalCleanupCases++; return false; }
                     if(effect==1) writeWord(OBJ+4,replacement);
                     externalReturn(0x87654321L); continue;
@@ -120,7 +140,7 @@ public class CompareResourceWorkerFileCleanup extends CompareResourceWorkerFileO
             initialize(path,0,new byte[0x144]); destroyed=false; active=false; trace.clear(); cleanupFixtures();
             byte[] guard=new byte[64]; new Random(kind+effect).nextBytes(guard); memory(OBJ-16,guard);
             writeWord(OBJ+4,handle); byte[] before=memory(OBJ-16,64);
-            register("r0",argument); register("r1",0xfedcba98L);
+            register("r0",argument); register("r1",0xfedcba98L); register("r2",cleanupPayload);
             thread.overrideCounter(toAddr(path ? cleanEntries[kind] : CLEAN[kind])); executing=true;
             boolean returned=executeCleanup(path,kind,argument,handle,replacement,effect,terminal);
             if(returned && kind<=2 && (handle&~1L)!=0) put(before,20,0);
@@ -148,7 +168,10 @@ public class CompareResourceWorkerFileCleanup extends CompareResourceWorkerFileO
         @Override public void beforeStore(PcodeThread<byte[]> t,PcodeOp op,AddressSpace space,byte[] offset,int size,byte[] value) {
             long a=Utils.bytesToLong(offset,offset.length,false);
             require(!releasedObject || !within(a,size,OBJ,OBJ+24),"Object write after release");
-            if(a==0x44e450 && size==4) return;
+            if(a==0x44e450 && size==4) {
+                if(breakActive) { require(Utils.bytesToLong(value,4,false)==0,"Break only clears callback slot"); breakWrites++; }
+                return;
+            }
             super.beforeStore(t,op,space,offset,size,value);
         }
     }

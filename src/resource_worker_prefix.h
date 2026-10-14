@@ -5,7 +5,15 @@
 /* EU 0x0044E650; removal compares/clears word +8 after disposal returns. */
 extern uint32_t smt4_worker_backend_state[5];
 extern const uint8_t smt4_worker_prefix_fallback[8]; /* EU 0x00407FBC */
-void smt4_worker_prefix_diagnostic(void); /* 0x002BCE9C; may not return */
+#include "resource_break.h"
+
+/* EU 0x003561F0..0x00356204: clear +0/+4/+8; preserve +12..+15.
+ * The receiver is word-aligned and has at least twelve writable bytes. */
+uint32_t smt4_worker_prefix_record_initialize(uint32_t address);
+/* Adapted startup slice 0x003F3570..0x003F3584 of 0x003F3568: construct
+ * 32 records at 0x004D43E0, stride 16, and retain the helper's r0 result.
+ * This does not recover the enclosing pool/lock/destructor startup. */
+uint32_t smt4_worker_prefix_initialize(void);
 
 /* Names end at NUL or colon within the first eight readable bytes. Longer
  * names enter the diagnostic; any returning continuation uses private data.

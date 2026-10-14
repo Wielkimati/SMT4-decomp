@@ -19,7 +19,7 @@ public class CompareResourceRequest extends CompareResourceSync {
     @Override boolean originalCode(long pc) {
         for(int i=0;i<4;i++) if(within(pc,4,REQUEST[i],LIMIT[i])) return true;
         for(int i=2;i<6;i++) if(within(pc,4,START[i],STOP[i])) return true;
-        return false;
+        return prefixCode(pc);
     }
     static byte[] z(String s) { return CompareResourceChain.z(s); }
     static boolean prefix(String s) { return CompareResourceChain.prefix(s); }
@@ -68,6 +68,7 @@ public class CompareResourceRequest extends CompareResourceSync {
                 offset==4 ? callback ? CALLBACK : 0 : offset==8 ? context : offset==12 ? flags : offset==16 ? actualParameter : out ? SIZE : 0);
             byte[] input=new byte[256]; Arrays.fill(input,(byte)0xd7); System.arraycopy(z(path),0,input,0,path.length()+1);
             memory(PATH,input); memory(MODE,new byte[]{(byte)mode});
+            preparePrefix(input,0,mode==0);
             register("r0",PATH); register("r1",out ? SIZE : 0); register("r2",flags); register("r3",callback ? CALLBACK : 0);
             writeWord(STACK-16,context); writeWord(STACK-12,parameter); byte[] callerStack=memory(STACK-16,16);
             List<Long> expectedCalls=new ArrayList<>(List.of(CLEAR));
@@ -76,10 +77,12 @@ public class CompareResourceRequest extends CompareResourceSync {
             String formatted=mode!=0 || prefix(path) ? path : "rom:/"+path;
             long buffer=0; int steps=0; executing=true;
             while(thread.getCounter().getOffset()!=RETURN) {
-                long pc=thread.getCounter().getOffset();
+                long pc=boundaryPC(rebuiltPath);
                 if(expectedCalls.contains(pc)) {
                     require(calls.size()<expectedCalls.size() && pc==expectedCalls.get(calls.size()),"Request boundary order");
-                    calls.add(pc); dependencyCalls++; require((register("sp")&7)==0,"Boundary stack alignment"); long result=0;
+                    calls.add(pc); require((register("sp")&7)==0,"Boundary stack alignment");
+                    if(recoverPrefix && pc==0x2b0674) {beginPrefix();step(rebuiltPath,++steps);continue;}
+                    dependencyCalls++; long result=0;
                     if(pc==CLEAR) {
                         buffer=register("r0"); require(register("r1")==256 && within(buffer,256,register("sp"),STACK-16),"Request scratch");
                         memory(buffer,new byte[256]);
@@ -106,6 +109,7 @@ public class CompareResourceRequest extends CompareResourceSync {
                 }
                 step(rebuiltPath,++steps);
             }
+            checkPrefix(mode==0);
             require(calls.equals(expectedCalls),"Missing request boundary");
             List<String> expectedWrites=new ArrayList<>();
             put(packet,0,DESC);
@@ -192,7 +196,9 @@ public class CompareResourceRequest extends CompareResourceSync {
         require(codeSize>0 && codeSize<=0x1000,"Binary extent");
         List<String> lines=Files.readAllLines(out.resolve("entries.txt")); require(lines.size()==8,"Entries");
         for(int i=0;i<8;i++) { recovered[i]=Long.parseLong(lines.get(i)); require(within(recovered[i],4,BUILD,BUILD+codeSize),"Entry extent"); }
+        configurePrefix(out);
         RequestMachine a=new RequestMachine(mapped,binary),b=new RequestMachine(mapped,binary);
+        directPrefixCases(out,a,b);
         String[] paths={"", "test/table.tbb", "rom:/test.tbb", "1234567:x", "12345678:x", "x".repeat(250)};
         long[] values={0,1,4,5,0x80,0x7fffffffL,0x80000000L,0xffffffffL};
         try(PrintWriter log=new PrintWriter(Files.newBufferedWriter(out.resolve("results.tsv")))) {
@@ -222,10 +228,13 @@ public class CompareResourceRequest extends CompareResourceSync {
         }
         for(int i=0;i<4;i++) for(long pc=REQUEST[i];pc<LIMIT[i];pc+=4) require(visited.contains(pc),"Unvisited request instruction "+Long.toHexString(pc));
         for(int i=2;i<6;i++) for(long pc=START[i];pc<STOP[i];pc+=4) require(visited.contains(pc),"Unvisited helper instruction");
+        prefixEvidence(out);
         Files.writeString(out.resolve("visited.txt"),String.join("\n",visited.stream().map(v->String.format("%08x",v)).toList())+"\n");
         Files.writeString(out.resolve("comparison.json"),String.format(Locale.ROOT,
             "{\"request_cases\":%d,\"callback_constructor_cases\":%d,\"completion_cases\":%d,\"original_instruction_addresses\":%d,\"max_steps\":%d,\"allocation_create_strings_callback_release_modeled\":true,\"live_verified\":false}\n",
             requestCases,createCases,completionCases,visited.size(),maxSteps));
+        if(recoverPrefix) Files.writeString(out.resolve("comparison.json"),
+            Files.readString(out.resolve("comparison.json")).replace("allocation_create_strings_callback_release_modeled","allocation_create_clear_format_callback_release_modeled"));
         println("SMT4_REQUEST_COMPARE_OK");
     }
 }

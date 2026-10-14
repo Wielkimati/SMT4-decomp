@@ -88,12 +88,24 @@
     },
     {
       "address": "0x003F05F0",
-      "name": "initialize_table_resource_registry",
+      "name": "smt4_table_resource_initialize",
       "kind": "function",
       "mode": "ARM",
       "confidence": "confirmed",
-      "evidence": "Relative callback at 0x0042A480; initializes resource slot 1 from NKMSortIndex path at 0x003F0930; docs/tbcr-consumers-eu.md",
-      "remaining": "Transient read-only Ghidra analysis; complete registry field semantics and runtime comparison pending"
+      "evidence": "All 365 ARM sites across two executable intervals; 272 ordered stores per call, direct and startup-dispatch comparisons plus persistent lifecycle consumers; docs/recovery/table-resource-initialize.md",
+      "remaining": "Original-address path bindings; other constructors, index/file services in new mode, concurrency, full startup and live agreement remain outside this bounded comparison",
+      "source": "src/table_resource_initialize.c",
+      "instruction_ranges": [
+        [
+          "0x003F05F0",
+          "0x003F090C"
+        ],
+        [
+          "0x003F0CB8",
+          "0x003F0F50"
+        ]
+      ],
+      "validation": "local/validation/table-registry-20261013-dev1/COMPLETE.json"
     },
     {
       "address": "0x002883E8",
@@ -238,7 +250,13 @@
       "remaining": "Live verification deferred; create/wait/string dependencies intercepted; original 32-bit pointers",
       "source": "src/resource_sync.c",
       "validation": "docs/recovery/resource-sync.md",
-      "instruction_level_cases": 2016
+      "instruction_level_cases": 2016,
+      "concrete_prefix_integration": {
+        "option": "--recover-prefix",
+        "validation": "docs/recovery/resource-path-prefix.md",
+        "length_source_reused": true,
+        "formatting_and_service_models_retained": true
+      }
     },
     {
       "address": "0x002C3344",
@@ -352,7 +370,12 @@
       "source": "src/resource_lock.c",
       "evidence": "[0x001464F8,0x001465D4); original/rebuilt/oracle event comparisons, including signed transitions and exclusive retry/clear paths; docs/recovery/resource-lock.md",
       "remaining": "Arbitration and exclusive monitor modeled; lock/signal integration and live concurrency pending",
-      "instruction_level_cases": 3092
+      "instruction_level_cases": 3092,
+      "register_contract_extension": {
+        "date": "2026-10-13",
+        "contract": "Raw r2 returns the lock address on initial fast success and zero on slow success; recursive acquire forwards it or preserves incoming r2 when already owned.",
+        "report": "docs/recovery/resource-lock.md#acquire-consumed-r2-extension-2026-10-13"
+      }
     },
     {
       "address": "0x00138FC0",
@@ -363,7 +386,14 @@
       "source": "src/resource_lock.c",
       "evidence": "[0x00138FC0,0x00139010); original/rebuilt/oracle event comparisons, including signed transitions and exclusive retry/clear paths; docs/recovery/resource-lock.md",
       "remaining": "Arbitration and exclusive monitor modeled; lock/signal integration and live concurrency pending",
-      "instruction_level_cases": 1064
+      "instruction_level_cases": 1064,
+      "register_contract_extension": {
+        "date": "2026-10-13",
+        "contract": "Returns the negated successful exclusive load in r2, or arbitration scratch r2 when that signed negation exceeds one.",
+        "report": "docs/recovery/resource-pool-object-teardown.md#diagnostic-register-contract-repair-2026-10-13",
+        "evidence": "local/validation/pool-teardown-register-20261013-final-checked/COMPLETE.json",
+        "domain": "Guarded mapped acyclic lists; concrete files with initially unowned count-zero or same-TLS nested locks; callback/kernel effects scheduled; live unverified"
+      }
     },
     {
       "address": "0x002A88FC",
@@ -373,7 +403,13 @@
       "confidence": "confirmed",
       "evidence": "GNU/Ghidra agree on six instructions: preserve r4/r5, load timeout stack words, SVC 0x22, restore and return. 1,920 direct comparisons and 7,556 integrated signal/lock cases pass; docs/recovery/resource-arbitration.md",
       "remaining": "SVC/kernel behavior modeled; exclusive outcomes scheduled; synchronous-chain integration through SVC and live agreement pending",
-      "instruction_level_cases": 1920
+      "instruction_level_cases": 1920,
+      "consumed_return_extension": {
+        "report": "docs/recovery/resource-wait-return.md",
+        "date": "2026-10-13",
+        "contract": "r0/r2; ordinary C callers still consume r0",
+        "evidence": "local/validation/wait-return-20261013-arbitration/COMPLETE.json"
+      }
     },
     {
       "address": "0x002AE72C",
@@ -383,7 +419,13 @@
       "confidence": "confirmed",
       "evidence": "Allocates a 24-byte packet, clears optional output, creates a callback descriptor and sets flags/parameter; GNU/Ghidra instruction agreement and bounded original/rebuilt/oracle comparison; docs/recovery/resource-request.md",
       "remaining": "Allocation/constructor/strings/user callback/release modeled; actual worker dispatch, file I/O and live agreement pending",
-      "instruction_level_cases": 1008
+      "instruction_level_cases": 1008,
+      "concrete_prefix_integration": {
+        "option": "--recover-prefix",
+        "validation": "docs/recovery/resource-path-prefix.md",
+        "length_source_reused": true,
+        "formatting_and_service_models_retained": true
+      }
     },
     {
       "address": "0x002B6820",
@@ -786,7 +828,13 @@
       "source": "src/resource_worker_file_cleanup.c",
       "validation": "docs/recovery/resource-worker-file-cleanup.md",
       "evidence": "local/validation/worker-cleanup-20261008-final/COMPLETE.json",
-      "remaining": "Backend close/resource release and diagnostic delivery modeled; live behavior deferred"
+      "remaining": "Backend close/resource release and diagnostic delivery modeled; live behavior deferred",
+      "break_callback_extension": {
+        "option": "--recover-break",
+        "report": "docs/recovery/resource-break.md",
+        "evidence": "local/validation/break-dispatch-20261011-final-checked/COMPLETE.json",
+        "contract": "Explicit incoming-r2 callback payload in cleanup, prefix diagnostics and bounded adapted worker I/O; callback/kernel remain modeled"
+      }
     },
     {
       "address": "0x002BB824",
@@ -797,7 +845,13 @@
       "source": "src/resource_worker_file_cleanup.c",
       "validation": "docs/recovery/resource-worker-file-cleanup.md",
       "evidence": "local/validation/worker-cleanup-20261008-final/COMPLETE.json",
-      "remaining": "Backend close/resource release and diagnostic delivery modeled; live behavior deferred"
+      "remaining": "Backend close/resource release and diagnostic delivery modeled; live behavior deferred",
+      "break_callback_extension": {
+        "option": "--recover-break",
+        "report": "docs/recovery/resource-break.md",
+        "evidence": "local/validation/break-dispatch-20261011-final-checked/COMPLETE.json",
+        "contract": "Explicit incoming-r2 callback payload in cleanup, prefix diagnostics and bounded adapted worker I/O; callback/kernel remain modeled"
+      }
     },
     {
       "address": "0x00354FA4",
@@ -808,7 +862,13 @@
       "source": "src/resource_worker_file_cleanup.c",
       "validation": "docs/recovery/resource-worker-file-cleanup.md",
       "evidence": "local/validation/worker-cleanup-20261008-final/COMPLETE.json",
-      "remaining": "Backend close/resource release and diagnostic delivery modeled; live behavior deferred"
+      "remaining": "Backend close/resource release and diagnostic delivery modeled; live behavior deferred",
+      "break_callback_extension": {
+        "option": "--recover-break",
+        "report": "docs/recovery/resource-break.md",
+        "evidence": "local/validation/break-dispatch-20261011-final-checked/COMPLETE.json",
+        "contract": "Explicit incoming-r2 callback payload in cleanup, prefix diagnostics and bounded adapted worker I/O; callback/kernel remain modeled"
+      }
     },
     {
       "address": "0x002B2580",
@@ -1028,7 +1088,19 @@
       "source": "src/resource_worker_prefix.c",
       "validation": "docs/recovery/resource-worker-prefix.md",
       "evidence": "local/validation/worker-prefix-20261008-final/COMPLETE.json",
-      "remaining": "Synthetic startup storage; older prefix mode models disposal; concrete archive disposal executes in backend lifetime checker; diagnostic delivery modeled; mapped nonaliasing inputs; live behavior unverified"
+      "remaining": "Synthetic startup storage; older prefix mode models disposal; concrete archive disposal executes in backend lifetime checker; diagnostic delivery modeled; mapped nonaliasing inputs; live behavior unverified",
+      "break_callback_extension": {
+        "option": "--recover-break",
+        "report": "docs/recovery/resource-break.md",
+        "evidence": "local/validation/break-dispatch-20261011-final-checked/COMPLETE.json",
+        "contract": "Explicit incoming-r2 callback payload in cleanup, prefix diagnostics and bounded adapted worker I/O; callback/kernel remain modeled"
+      },
+      "registry_initialization_extension": {
+        "option": "--recover-registry-initialize",
+        "report": "docs/recovery/resource-registry-initialize.md",
+        "evidence": "local/validation/registry-initialize-20261013-dev2/COMPLETE.json",
+        "contract": "Recovered array/record/startup slice replaces initial key/backend fixtures in explicit connected worker and persistent lifecycles; older direct modes retain fixtures"
+      }
     },
     {
       "address": "0x002C4054",
@@ -1039,7 +1111,19 @@
       "source": "src/resource_worker_prefix.c",
       "validation": "docs/recovery/resource-worker-prefix.md",
       "evidence": "local/validation/worker-prefix-20261008-final/COMPLETE.json",
-      "remaining": "Synthetic startup storage; older prefix mode models disposal; concrete archive disposal executes in backend lifetime checker; diagnostic delivery modeled; mapped nonaliasing inputs; live behavior unverified"
+      "remaining": "Synthetic startup storage; older prefix mode models disposal; concrete archive disposal executes in backend lifetime checker; diagnostic delivery modeled; mapped nonaliasing inputs; live behavior unverified",
+      "break_callback_extension": {
+        "option": "--recover-break",
+        "report": "docs/recovery/resource-break.md",
+        "evidence": "local/validation/break-dispatch-20261011-final-checked/COMPLETE.json",
+        "contract": "Explicit incoming-r2 callback payload in cleanup, prefix diagnostics and bounded adapted worker I/O; callback/kernel remain modeled"
+      },
+      "registry_initialization_extension": {
+        "option": "--recover-registry-initialize",
+        "report": "docs/recovery/resource-registry-initialize.md",
+        "evidence": "local/validation/registry-initialize-20261013-dev2/COMPLETE.json",
+        "contract": "Recovered array/record/startup slice replaces initial key/backend fixtures in explicit connected worker and persistent lifecycles; older direct modes retain fixtures"
+      }
     },
     {
       "address": "0x002B5D6C",
@@ -1154,7 +1238,14 @@
       "source": "src/resource_worker_file_owner.c",
       "validation": "docs/recovery/resource-worker-file-owner.md",
       "evidence": "local/validation/worker-file-owner-20261008-final/COMPLETE.json",
-      "remaining": "File/archive services, SVC, locks, clear and diagnostics modeled; initial pools/registry synthetic; mapped nonaliasing storage; live behavior unverified"
+      "remaining": "File/archive services, SVC, locks, clear and diagnostics modeled; initial pools/registry synthetic; mapped nonaliasing storage; live behavior unverified",
+      "register_contract_extension": {
+        "date": "2026-10-13",
+        "contract": "Returns incoming r2 for zero handle or kernel scratch r2 after SVC 0x23; handle clear preserves it.",
+        "report": "docs/recovery/resource-pool-object-teardown.md#diagnostic-register-contract-repair-2026-10-13",
+        "evidence": "local/validation/pool-teardown-register-20261013-final-checked/COMPLETE.json",
+        "domain": "Guarded mapped acyclic lists; concrete files with initially unowned count-zero or same-TLS nested locks; callback/kernel effects scheduled; live unverified"
+      }
     },
     {
       "address": "0x00356438",
@@ -1165,7 +1256,14 @@
       "source": "src/resource_worker_file_owner.c",
       "validation": "docs/recovery/resource-worker-file-owner.md",
       "evidence": "local/validation/worker-file-owner-20261008-final/COMPLETE.json",
-      "remaining": "File/archive services, SVC, locks, clear and diagnostics modeled; initial pools/registry synthetic; mapped nonaliasing storage; live behavior unverified"
+      "remaining": "File/archive services, SVC, locks, clear and diagnostics modeled; initial pools/registry synthetic; mapped nonaliasing storage; live behavior unverified",
+      "register_contract_extension": {
+        "date": "2026-10-13",
+        "contract": "Preserves close/virtual teardown r2 through node publication and returns recursive lock-release r2.",
+        "report": "docs/recovery/resource-pool-object-teardown.md#diagnostic-register-contract-repair-2026-10-13",
+        "evidence": "local/validation/pool-teardown-register-20261013-final-checked/COMPLETE.json",
+        "domain": "Guarded mapped acyclic lists; concrete files with initially unowned count-zero or same-TLS nested locks; callback/kernel effects scheduled; live unverified"
+      }
     },
     {
       "address": "0x00356C28",
@@ -1187,7 +1285,14 @@
       "source": "src/resource_worker_file_service.c",
       "validation": "docs/recovery/resource-worker-file-service.md",
       "evidence": "local/validation/worker-file-service-20261008-final/COMPLETE.json",
-      "remaining": "TLS acquisition and SVC request/response modeled; mapped nonaliasing storage; live behavior unverified"
+      "remaining": "TLS acquisition and SVC request/response modeled; mapped nonaliasing storage; live behavior unverified",
+      "register_contract_extension": {
+        "date": "2026-10-13",
+        "contract": "Returns SVC 0x32 scratch r2 unchanged while r0 selects kernel/service status.",
+        "report": "docs/recovery/resource-pool-object-teardown.md#diagnostic-register-contract-repair-2026-10-13",
+        "evidence": "local/validation/pool-teardown-register-20261013-final-checked/COMPLETE.json",
+        "domain": "Guarded mapped acyclic lists; concrete files with initially unowned count-zero or same-TLS nested locks; callback/kernel effects scheduled; live unverified"
+      }
     },
     {
       "address": "0x002ADBE8",
@@ -1331,7 +1436,14 @@
       "source": "src/resource_recursive_lock.c",
       "validation": "docs/recovery/resource-recursive-lock.md",
       "evidence": "local/validation/recursive-lock-20261008-final-checked/COMPLETE.json",
-      "remaining": "TLS, exclusives and arbitration scheduled; arbitrary concurrency, lock initialization and live behavior unverified"
+      "remaining": "TLS, exclusives and arbitration scheduled; arbitrary concurrency, lock initialization and live behavior unverified",
+      "register_contract_extension": {
+        "date": "2026-10-13",
+        "contract": "Already-owned path preserves incoming r2; other paths forward base-acquire scratch. Full base-acquire scratch recovery is outside the connected teardown domain.",
+        "report": "docs/recovery/resource-pool-object-teardown.md#diagnostic-register-contract-repair-2026-10-13",
+        "evidence": "local/validation/pool-teardown-register-20261013-final-checked/COMPLETE.json",
+        "domain": "Guarded mapped acyclic lists; concrete files with initially unowned count-zero or same-TLS nested locks; callback/kernel effects scheduled; live unverified"
+      }
     },
     {
       "address": "0x002C3A78",
@@ -1343,7 +1455,14 @@
       "source": "src/resource_recursive_lock.c",
       "validation": "docs/recovery/resource-recursive-lock.md",
       "evidence": "local/validation/recursive-lock-20261008-final-checked/COMPLETE.json",
-      "remaining": "TLS, exclusives and arbitration scheduled; arbitrary concurrency, lock initialization and live behavior unverified"
+      "remaining": "TLS, exclusives and arbitration scheduled; arbitrary concurrency, lock initialization and live behavior unverified",
+      "register_contract_extension": {
+        "date": "2026-10-13",
+        "contract": "Nonfinal release preserves incoming r2; final release forwards base-release scratch r2 after owner clear.",
+        "report": "docs/recovery/resource-pool-object-teardown.md#diagnostic-register-contract-repair-2026-10-13",
+        "evidence": "local/validation/pool-teardown-register-20261013-final-checked/COMPLETE.json",
+        "domain": "Guarded mapped acyclic lists; concrete files with initially unowned count-zero or same-TLS nested locks; callback/kernel effects scheduled; live unverified"
+      }
     },
     {
       "address": "0x002A4EB4",
@@ -1404,23 +1523,814 @@
       "validation": "docs/recovery/resource-lazy-pool.md",
       "evidence": "local/validation/lazy-pool-20261008/COMPLETE.json",
       "remaining": "Caller-mediated guard domain; initial outer lock and backing storage synthetic; TLS and successful exclusives modeled; arbitrary concurrency and live behavior unverified"
-    }
-  ],
-  "leads": [
+    },
+    {
+      "address": "0x002ADCD8",
+      "end_exclusive": "0x002ADE84",
+      "name": "smt4_resource_pool_owner_create",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_owner.c",
+      "validation": "docs/recovery/resource-pool-owner.md",
+      "evidence": "local/validation/pool-owner-20261008-final/COMPLETE.json",
+      "remaining": "Default checker retains request model; --recover-request executes 0x002B5DD0 (docs/recovery/resource-pool-request.md). Initializer 0x00145E9C, virtual cleanup, SVC 0x23/0x32 remain modeled; teardown and pool return/reuse unresolved; live behavior unverified"
+    },
+    {
+      "address": "0x0014636C",
+      "end_exclusive": "0x00146448",
+      "name": "smt4_resource_pool_object_construct",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_owner.c",
+      "validation": "docs/recovery/resource-pool-owner.md",
+      "evidence": "local/validation/pool-owner-20261008-final/COMPLETE.json",
+      "remaining": "Mapped 0x130-byte storage; sparse initialization preserves unknown bytes; embedded locks/pools are not initialized by this constructor"
+    },
+    {
+      "address": "0x002C4B84",
+      "end_exclusive": "0x002C4BD8",
+      "name": "smt4_resource_aligned_zero",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_clear.c",
+      "validation": "docs/recovery/resource-pool-owner.md",
+      "evidence": "local/validation/pool-owner-20261008-final/COMPLETE.json",
+      "remaining": "New connected entry evidence covers aligned length 0x130; other lengths retain separate shared-body evidence; arbitrary invalid storage unverified"
+    },
+    {
+      "address": "0x002B5DD0",
+      "end_exclusive": "0x002B5E6C",
+      "name": "smt4_resource_pool_owner_request",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_request.c",
+      "validation": "docs/recovery/resource-pool-request.md",
+      "evidence": "local/validation/pool-request-20261008-final/COMPLETE.json",
+      "remaining": "TLS and SVC 0x32 responses modeled; mapped disjoint pointer domain; real service acceptance and live behavior unverified"
+    },
+    {
+      "address": "0x00145E9C",
+      "end_exclusive": "0x0014627C",
+      "name": "smt4_resource_pool_owner_initialize",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_object_initialize.c",
+      "validation": "docs/recovery/resource-pool-object-initialize.md",
+      "evidence": "local/validation/pool-object-init-20261008-final/COMPLETE.json",
+      "remaining": "Virtual reads and returning diagnostics modeled; TLS/SVC and exclusives scheduled; mapped disjoint buffers and bounded pools; live behavior unverified"
+    },
+    {
+      "address": "0x00145E7C",
+      "end_exclusive": "0x00145E9C",
+      "name": "smt4_resource_pool_object_query",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_object_initialize.c",
+      "validation": "docs/recovery/resource-pool-object-initialize.md",
+      "evidence": "local/validation/pool-object-init-20261008-final/COMPLETE.json",
+      "remaining": "Virtual reads and returning diagnostics modeled; TLS/SVC and exclusives scheduled; mapped disjoint buffers and bounded pools; live behavior unverified"
+    },
+    {
+      "address": "0x002BBD3C",
+      "end_exclusive": "0x002BBD64",
+      "name": "smt4_resource_pool_query_service",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_query.c",
+      "validation": "docs/recovery/resource-pool-object-initialize.md",
+      "evidence": "local/validation/pool-object-init-20261008-final/COMPLETE.json",
+      "remaining": "Virtual reads and returning diagnostics modeled; TLS/SVC and exclusives scheduled; mapped disjoint buffers and bounded pools; live behavior unverified",
+      "startup_integration": {
+        "source": "src/resource_worker_service_startup.c",
+        "evidence": "local/validation/service-startup-20261011-final/COMPLETE.json",
+        "report": "docs/recovery/resource-worker-service-startup.md",
+        "new_recovery": false
+      }
+    },
+    {
+      "address": "0x0014F42C",
+      "end_exclusive": "0x0014F460",
+      "name": "smt4_resource_pool_query_value",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_query.c",
+      "validation": "docs/recovery/resource-pool-object-initialize.md",
+      "evidence": "local/validation/pool-object-init-20261008-final/COMPLETE.json",
+      "remaining": "Virtual reads and returning diagnostics modeled; TLS/SVC and exclusives scheduled; mapped disjoint buffers and bounded pools; live behavior unverified"
+    },
+    {
+      "address": "0x003567F0",
+      "end_exclusive": "0x00356840",
+      "name": "smt4_resource_pool_object_dispose",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_object_teardown.c",
+      "validation": "docs/recovery/resource-pool-object-teardown.md",
+      "evidence": "local/validation/pool-teardown-20261008-final/COMPLETE.json",
+      "remaining": "Current global pool captured after virtual teardown; scheduled locks/kernel and synthetic storage; no duplicate-return validation",
+      "register_contract_extension": {
+        "date": "2026-10-13",
+        "contract": "Forwards entry r2 through virtual teardown before reloading the current global destination pool.",
+        "report": "docs/recovery/resource-pool-object-teardown.md#diagnostic-register-contract-repair-2026-10-13",
+        "evidence": "local/validation/pool-teardown-register-20261013-final-checked/COMPLETE.json",
+        "domain": "Guarded mapped acyclic lists; concrete files with initially unowned count-zero or same-TLS nested locks; callback/kernel effects scheduled; live unverified"
+      }
+    },
+    {
+      "address": "0x00356844",
+      "end_exclusive": "0x003568C0",
+      "name": "smt4_resource_pool_object_teardown",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_object_teardown.c",
+      "validation": "docs/recovery/resource-pool-object-teardown.md",
+      "evidence": "local/validation/pool-teardown-20261008-final/COMPLETE.json",
+      "remaining": "Five ownership slots preserved; concrete file disposal and embedded pool cleanup; backing storage not released; diagnostics/kernel modeled",
+      "register_contract_extension": {
+        "date": "2026-10-13",
+        "contract": "Carries incoming r2 through the five virtual owned-file calls, then returned r2 through +F4 and +B8 base teardown; preserves reloaded slots and lists.",
+        "report": "docs/recovery/resource-pool-object-teardown.md#diagnostic-register-contract-repair-2026-10-13",
+        "evidence": "local/validation/pool-teardown-register-20261013-final-checked/COMPLETE.json",
+        "domain": "Guarded mapped acyclic lists; concrete files with initially unowned count-zero or same-TLS nested locks; callback/kernel effects scheduled; live unverified"
+      }
+    },
+    {
+      "address": "0x002A458C",
+      "end_exclusive": "0x002A45E8",
+      "name": "smt4_resource_pool_base_teardown",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_object_teardown.c",
+      "validation": "docs/recovery/resource-pool-object-teardown.md",
+      "evidence": "local/validation/pool-teardown-20261008-final/COMPLETE.json",
+      "remaining": "Returning diagnostic continuation is conditional; bounded mapped acyclic lists; detaches nodes without freeing storage",
+      "register_contract_extension": {
+        "date": "2026-10-13",
+        "contract": "Entry r2 reaches the first diagnostic; returned diagnostic r2 reaches the second. A nonempty detached list returns its final node in r2; empty paths retain entry or service r2.",
+        "report": "docs/recovery/resource-pool-object-teardown.md#diagnostic-register-contract-repair-2026-10-13",
+        "evidence": "local/validation/pool-teardown-register-20261013-final-checked/COMPLETE.json",
+        "domain": "Guarded mapped acyclic lists; concrete files with initially unowned count-zero or same-TLS nested locks; callback/kernel effects scheduled; live unverified"
+      }
+    },
+    {
+      "address": "0x001270C4",
+      "end_exclusive": "0x00127218",
+      "name": "smt4_resource_pool_alternate_create",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_alternate.c",
+      "validation": "docs/recovery/resource-pool-alternate.md",
+      "evidence": "local/validation/pool-alternate-20261008-final-checked/COMPLETE.json",
+      "remaining": "Self-referential one-byte request buffer: pinned build also preserves actual exposed byte; reads/diagnostics and kernel effects modeled; storage synthetic; live behavior unverified"
+    },
+    {
+      "address": "0x003567A4",
+      "end_exclusive": "0x003567E4",
+      "name": "smt4_resource_pool_wrap_handle",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_pool_alternate.c",
+      "validation": "docs/recovery/resource-pool-alternate.md",
+      "evidence": "local/validation/pool-alternate-20261008-final-checked/COMPLETE.json",
+      "remaining": "Receiver ignored; output preserved on exhaustion even for handle zero; SVC result modeled; aliasing and real concurrency outside domain"
+    },
+    {
+      "address": "0x00127220",
+      "name": "smt4_worker_backend_create_descriptor",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_archive_descriptor.c",
+      "validation": "docs/recovery/resource-worker-archive-descriptor.md",
+      "evidence": "local/validation/archive-descriptor-20261008-final/COMPLETE.json",
+      "remaining": "TLS/SVC, locks and diagnostic delivery modeled; initial pools and registry synthetic; service interpretation and live behavior unverified"
+    },
+    {
+      "address": "0x002B5FCC",
+      "name": "smt4_worker_archive_descriptor_make",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_archive_descriptor.c",
+      "validation": "docs/recovery/resource-worker-archive-descriptor.md",
+      "evidence": "local/validation/archive-descriptor-20261008-final/COMPLETE.json",
+      "remaining": "TLS/SVC, locks and diagnostic delivery modeled; initial pools and registry synthetic; service interpretation and live behavior unverified"
+    },
+    {
+      "address": "0x0011B860",
+      "name": "smt4_worker_backend_register_descriptor",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_archive_descriptor.c",
+      "validation": "docs/recovery/resource-worker-archive-descriptor.md",
+      "evidence": "local/validation/archive-descriptor-20261008-final/COMPLETE.json",
+      "remaining": "TLS/SVC, locks and diagnostic delivery modeled; initial pools and registry synthetic; service interpretation and live behavior unverified"
+    },
+    {
+      "address": "0x001272D4",
+      "name": "smt4_worker_service_request",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_initialize.c",
+      "validation": "docs/recovery/resource-worker-service-initialize.md",
+      "evidence": "local/validation/service-initialize-20261008-validated/COMPLETE.json",
+      "remaining": "TLS/SVC replies modeled; initial storage synthetic; service acquisition, aliasing, concurrency and live behavior unverified"
+    },
+    {
+      "address": "0x0011BA54",
+      "name": "smt4_worker_service_initialize",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_initialize.c",
+      "validation": "docs/recovery/resource-worker-service-initialize.md",
+      "evidence": "local/validation/service-initialize-20261008-validated/COMPLETE.json",
+      "remaining": "TLS/SVC replies modeled; initial storage synthetic; service acquisition, aliasing, concurrency and live behavior unverified"
+    },
+    {
+      "address": "0x0010F5B8",
+      "name": "smt4_worker_service_startup",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_startup.c",
+      "validation": "docs/recovery/resource-worker-service-startup.md",
+      "evidence": "local/validation/service-startup-20261011-final/COMPLETE.json",
+      "remaining": "Setup/name-length/acquisition, TLS/SVC and diagnostics modeled; initial pools and registry synthetic; aliasing, concurrency and live behavior unverified"
+    },
+    {
+      "address": "0x0011BA80",
+      "name": "smt4_worker_service_state_request",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_startup.c",
+      "validation": "docs/recovery/resource-worker-service-startup.md",
+      "evidence": "local/validation/service-startup-20261011-final/COMPLETE.json",
+      "remaining": "Setup/name-length/acquisition, TLS/SVC and diagnostics modeled; initial pools and registry synthetic; aliasing, concurrency and live behavior unverified"
+    },
+    {
+      "address": "0x0011BAB0",
+      "name": "smt4_worker_service_publish",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_startup.c",
+      "validation": "docs/recovery/resource-worker-service-startup.md",
+      "evidence": "local/validation/service-startup-20261011-final/COMPLETE.json",
+      "remaining": "Setup/name-length/acquisition, TLS/SVC and diagnostics modeled; initial pools and registry synthetic; aliasing, concurrency and live behavior unverified"
+    },
+    {
+      "address": "0x002C1590",
+      "name": "smt4_worker_service_acquire",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_acquire.c",
+      "validation": "docs/recovery/resource-worker-service-acquire.md",
+      "evidence": "local/validation/service-acquisition-20261011-final/COMPLETE.json",
+      "remaining": "Mapped ordinary RAM only; setup/TLS/SVC/locks/diagnostics modeled; UQSUB8 uses a bounded host instruction implementation; concurrency, service interpretation and live behavior unverified",
+      "body_ranges_exclusive": [
+        [
+          "0x0012954C",
+          "0x001295A0"
+        ],
+        [
+          "0x002C1590",
+          "0x002C15B8"
+        ]
+      ]
+    },
+    {
+      "address": "0x002ADBA4",
+      "name": "smt4_service_name_copy",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_acquire.c",
+      "validation": "docs/recovery/resource-worker-service-acquire.md",
+      "evidence": "local/validation/service-acquisition-20261011-final/COMPLETE.json",
+      "remaining": "Mapped ordinary RAM only; setup/TLS/SVC/locks/diagnostics modeled; UQSUB8 uses a bounded host instruction implementation; concurrency, service interpretation and live behavior unverified"
+    },
+    {
+      "address": "0x002C32E4",
+      "name": "smt4_worker_service_name_length",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_acquire.c",
+      "validation": "docs/recovery/resource-worker-service-acquire.md",
+      "evidence": "local/validation/service-acquisition-20261011-final/COMPLETE.json",
+      "remaining": "Mapped ordinary RAM only; setup/TLS/SVC/locks/diagnostics modeled; UQSUB8 uses a bounded host instruction implementation; concurrency, service interpretation and live behavior unverified"
+    },
+    {
+      "address": "0x002C15C4",
+      "name": "smt4_worker_service_setup",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_setup.c",
+      "validation": "docs/recovery/resource-worker-service-setup.md",
+      "evidence": "local/validation/service-setup-20261011-final/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002C15C4",
+          "0x002C161C"
+        ]
+      ],
+      "remaining": "TLS/kernel replies, sleep, locks and diagnostics modeled; finite scripted retries, synthetic storage, no concurrency or live service evidence"
+    },
+    {
+      "address": "0x0011CD48",
+      "name": "smt4_service_manager_connect",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_setup.c",
+      "validation": "docs/recovery/resource-worker-service-setup.md",
+      "evidence": "local/validation/service-setup-20261011-final/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x0011CD48",
+          "0x0011CDD8"
+        ]
+      ],
+      "remaining": "TLS/kernel replies, sleep, locks and diagnostics modeled; finite scripted retries, synthetic storage, no concurrency or live service evidence"
+    },
+    {
+      "address": "0x00129510",
+      "name": "smt4_service_manager_register",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_setup.c",
+      "validation": "docs/recovery/resource-worker-service-setup.md",
+      "evidence": "local/validation/service-setup-20261011-final/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x00129510",
+          "0x00129544"
+        ]
+      ],
+      "remaining": "TLS/kernel replies, sleep, locks and diagnostics modeled; finite scripted retries, synthetic storage, no concurrency or live service evidence"
+    },
+    {
+      "address": "0x001382CC",
+      "name": "smt4_service_connect_port",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_service_setup.c",
+      "validation": "docs/recovery/resource-worker-service-setup.md",
+      "evidence": "local/validation/service-setup-20261011-final/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x001382CC",
+          "0x001382E4"
+        ]
+      ],
+      "remaining": "TLS/kernel replies, sleep, locks and diagnostics modeled; finite scripted retries, synthetic storage, no concurrency or live service evidence"
+    },
+    {
+      "address": "0x002BBD70",
+      "name": "smt4_worker_diagnostic",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_diagnostic.c",
+      "validation": "docs/recovery/resource-worker-diagnostic.md",
+      "evidence": "local/validation/diagnostic-20261011-final/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002BBD70",
+          "0x002BBD98"
+        ]
+      ],
+      "remaining": "TLS/kernel, sleep, locks and lower waits modeled; aligned bounded copy extents; finite retry scripts; synthetic storage; no concurrency/cache/timing/live evidence"
+    },
+    {
+      "address": "0x002AD7E8",
+      "name": "smt4_diagnostic_deliver",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_diagnostic.c",
+      "validation": "docs/recovery/resource-delivery-return.md",
+      "evidence": "local/validation/delivery-return-20261013-create-accepted/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002AD7E8",
+          "0x002AD8F0"
+        ]
+      ],
+      "remaining": "Extended r0/r2 return: types 2/5 retain final release r2; other returning types retain wait r0/r2. Lower lock/wait returned registers, TLS/kernel/sleep modeled in create/chain; incoming release scratch provenance, nonreturning/concurrency/live behavior unverified."
+    },
+    {
+      "address": "0x00144900",
+      "name": "smt4_diagnostic_process",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_diagnostic.c",
+      "validation": "docs/recovery/resource-worker-diagnostic.md",
+      "evidence": "local/validation/diagnostic-20261011-final/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x00144900",
+          "0x00144918"
+        ]
+      ],
+      "remaining": "TLS/kernel, sleep, locks and lower waits modeled; aligned bounded copy extents; finite retry scripts; synthetic storage; no concurrency/cache/timing/live evidence"
+    },
+    {
+      "address": "0x00146964",
+      "name": "smt4_diagnostic_request",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_diagnostic.c",
+      "validation": "docs/recovery/resource-worker-diagnostic.md",
+      "evidence": "local/validation/diagnostic-20261011-final/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x00146964",
+          "0x0014699C"
+        ]
+      ],
+      "remaining": "TLS/kernel, sleep, locks and lower waits modeled; aligned bounded copy extents; finite retry scripts; synthetic storage; no concurrency/cache/timing/live evidence"
+    },
+    {
+      "address": "0x002BCFAC",
+      "name": "smt4_diagnostic_copy",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_aligned_copy.c",
+      "validation": "docs/recovery/resource-worker-diagnostic.md",
+      "evidence": "local/validation/diagnostic-20261011-final/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002BCFAC",
+          "0x002BD020"
+        ]
+      ],
+      "remaining": "TLS/kernel, sleep, locks and lower waits modeled; aligned bounded copy extents; finite retry scripts; synthetic storage; no concurrency/cache/timing/live evidence",
+      "reload_reuse": {
+        "report": "docs/recovery/table-resource-copy.md",
+        "evidence": "local/validation/table-copy-20261013-shared-final/COMPLETE.json",
+        "source_body_unchanged": true
+      }
+    },
+    {
+      "address": "0x002C5470",
+      "name": "smt4_diagnostic_wait_initialize",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_diagnostic_wait.c",
+      "validation": "docs/recovery/resource-diagnostic-wait.md",
+      "evidence": "local/validation/diagnostic-wait-20261011-final-checked/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002C5470",
+          "0x002C54A4"
+        ]
+      ],
+      "remaining": "Exclusive outcomes and kernel arbitration scheduled; aligned mapped objects; finite pending prefixes; concurrency/liveness/live evidence open"
+    },
+    {
+      "address": "0x002C367C",
+      "name": "smt4_diagnostic_wait",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_diagnostic_wait.c",
+      "validation": "docs/recovery/resource-diagnostic-wait.md",
+      "evidence": "local/validation/diagnostic-wait-20261011-final-checked/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002C367C",
+          "0x002C373C"
+        ]
+      ],
+      "remaining": "Exclusive outcomes and kernel arbitration scheduled; aligned mapped objects; finite pending prefixes; concurrency/liveness/live evidence open",
+      "consumed_return_extension": {
+        "report": "docs/recovery/resource-wait-return.md",
+        "date": "2026-10-13",
+        "contract": "r0/r2; ordinary C callers still consume r0",
+        "evidence": "local/validation/wait-return-20261013-worker-final/COMPLETE.json"
+      }
+    },
+    {
+      "address": "0x002BCE9C",
+      "name": "smt4_worker_file_preclose",
+      "kind": "function",
+      "mode": "ARM",
+      "end_exclusive": "0x002BCEA4",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_break.c",
+      "validation": "docs/recovery/resource-break.md",
+      "evidence": "local/validation/break-dispatch-20261011-final-checked/COMPLETE.json",
+      "remaining": "Callback implementation and SVC kernel behavior modeled; live gameplay deferred",
+      "aliases": [
+        "smt4_worker_prefix_diagnostic"
+      ]
+    },
+    {
+      "address": "0x002AD90C",
+      "name": "smt4_break_dispatch",
+      "kind": "function",
+      "mode": "ARM",
+      "end_exclusive": "0x002AD958",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_break.c",
+      "validation": "docs/recovery/resource-break.md",
+      "evidence": "local/validation/break-dispatch-20261011-final-checked/COMPLETE.json",
+      "remaining": "Callback implementation and SVC kernel behavior modeled; live gameplay deferred"
+    },
+    {
+      "address": "0x001526B4",
+      "name": "smt4_break_svc",
+      "kind": "function",
+      "mode": "ARM",
+      "end_exclusive": "0x001526BC",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_break.c",
+      "validation": "docs/recovery/resource-break.md",
+      "evidence": "local/validation/break-dispatch-20261011-final-checked/COMPLETE.json",
+      "remaining": "Callback implementation and SVC kernel behavior modeled; live gameplay deferred",
+      "saved_ghidra_function_object": false,
+      "membership_evidence": "Bounded SVC 0x3C / BX LR encodings, independent GNU decode and controlled execution"
+    },
+    {
+      "address": "0x0044E450",
+      "name": "smt4_break_callback_slot",
+      "kind": "data",
+      "size_bytes": 4,
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_break.h",
+      "validation": "docs/recovery/resource-break.md",
+      "evidence": "local/validation/break-dispatch-20261011-final-checked/COMPLETE.json",
+      "remaining": "Callback installation/owner and general reentrancy not recovered"
+    },
+    {
+      "address": "0x002C5FAC",
+      "end_exclusive": "0x002C5FCE",
+      "name": "smt4_array_initialize",
+      "kind": "function",
+      "mode": "Thumb",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_array_initialize.c",
+      "validation": "docs/recovery/resource-registry-initialize.md",
+      "evidence": "local/validation/registry-initialize-20261013-dev2/COMPLETE.json",
+      "contract": "Null constructor skips; otherwise count callbacks at unsigned wrapping base+i*stride, ignored callback return, original base return; callback bodies modeled except recovered prefix record",
+      "remaining": "General callback aliasing/reentrancy/concurrency, unsupported receivers, broader startup and deferred live behavior unverified",
+      "saved_ghidra_function_object": true
+    },
+    {
+      "address": "0x003561F0",
+      "end_exclusive": "0x00356204",
+      "name": "smt4_worker_prefix_record_initialize",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_prefix_initialize.c",
+      "validation": "docs/recovery/resource-registry-initialize.md",
+      "evidence": "local/validation/registry-initialize-20261013-dev2/COMPLETE.json",
+      "contract": "Clear exactly +0/+4/+8, preserve record tail, return original receiver; aligned writable storage only",
+      "remaining": "General callback aliasing/reentrancy/concurrency, unsupported receivers, broader startup and deferred live behavior unverified",
+      "saved_ghidra_function_object": false
+    },
+    {
+      "address": "0x003F3570",
+      "end_exclusive": "0x003F3584",
+      "name": "smt4_worker_prefix_initialize",
+      "kind": "adapted internal slice",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_worker_prefix_initialize.c",
+      "validation": "docs/recovery/resource-registry-initialize.md",
+      "evidence": "local/validation/registry-initialize-20261013-dev2/COMPLETE.json",
+      "contract": "Reused slice within recovered 0x003F3568: construct 32 records at 0x004D43E0, stride 16",
+      "remaining": "General callback aliasing/reentrancy/concurrency, unsupported receivers and deferred live behavior unverified; full constructor covered separately in resource-global-startup.md",
+      "saved_ghidra_function_object": false
+    },
+    {
+      "address": "0x003F3568",
+      "end_exclusive": "0x003F36F0",
+      "name": "smt4_resource_global_startup",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_global_startup.c",
+      "validation": "docs/recovery/resource-global-startup.md",
+      "evidence": "local/validation/global-startup-20261013-dev2/COMPLETE.json",
+      "contract": "Construct 32 registry records, clear service global, initialize outer lock, construct three fixed pools and inline locks; no-effect tail 0x00225E68 leaves last pool in r0",
+      "remaining": "Backing storage, TLS/exclusive outcomes and external services synthetic/scheduled; full process startup, concurrency and live behavior unverified",
+      "saved_ghidra_function_object": false
+    },
     {
       "address": "0x00100CB8",
+      "name": "smt4_startup_dispatch_relative",
+      "kind": "function",
       "mode": "Thumb",
-      "confidence": "confirmed",
-      "observation": "Invokes 636 self-relative callbacks from [0x0042A188,0x0042AB78), each target = entry address + stored 32-bit offset modulo 2^32. All targets lie in text, with bit 0 clear.",
-      "interpretation": "Probable static-initializer dispatcher; original name and callback purposes unknown"
+      "confidence": "confirmed within compared domain",
+      "source": "src/startup_dispatch.c",
+      "validation": "docs/recovery/startup-dispatch.md",
+      "evidence": "local/validation/startup-dispatch-20261013-dev1/COMPLETE.json",
+      "remaining": "Other constructor effects modeled; synthetic endpoint probes are emulator-only; full process startup and live agreement remain open"
     },
     {
       "address": "0x00102338",
+      "name": "smt4_startup_dispatch_absolute",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/startup_dispatch.c",
+      "validation": "docs/recovery/startup-dispatch.md",
+      "evidence": "local/validation/startup-dispatch-20261013-dev1/COMPLETE.json",
+      "remaining": "Other constructor effects modeled; synthetic endpoint probes are emulator-only; full process startup and live agreement remain open"
+    },
+    {
+      "address": "0x0025C848",
+      "name": "smt4_table_resource_reload",
+      "kind": "function",
       "mode": "ARM",
       "confidence": "confirmed",
-      "observation": "Absolute callback loop; both endpoint literals equal 0x0042AB78, so the pinned image describes an empty range",
-      "interpretation": "Initializer-related role probable; runtime modification not investigated"
+      "source": "src/table_resource_reload.c",
+      "evidence": "Saved ARM membership/raw bytes and GNU disassembly; original/rebuilt ordered effects and guarded state; docs/recovery/table-resource-reload.md",
+      "validation": "local/validation/table-reload-20261013-final/COMPLETE.json",
+      "remaining": "File load/release/copy modeled; writable ordinary original-address storage; bounded fixtures, no live/concurrency claim"
     },
+    {
+      "address": "0x0025B9D8",
+      "name": "smt4_table_reload_state_set",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed",
+      "source": "src/table_resource_reload.c",
+      "evidence": "Saved ARM membership/raw bytes and GNU disassembly; original/rebuilt ordered effects and guarded state; docs/recovery/table-resource-reload.md",
+      "validation": "local/validation/table-reload-20261013-final/COMPLETE.json",
+      "remaining": "File load/release/copy modeled; writable ordinary original-address storage; bounded fixtures, no live/concurrency claim"
+    },
+    {
+      "address": "0x0025B9E8",
+      "name": "smt4_table_reload_state_get",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed",
+      "source": "src/table_resource_reload.c",
+      "evidence": "Saved ARM membership/raw bytes and GNU disassembly; original/rebuilt ordered effects and guarded state; docs/recovery/table-resource-reload.md",
+      "validation": "local/validation/table-reload-20261013-final/COMPLETE.json",
+      "remaining": "File load/release/copy modeled; writable ordinary original-address storage; bounded fixtures, no live/concurrency claim"
+    },
+    {
+      "address": "0x002C5890",
+      "name": "smt4_table_reload_gate",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed",
+      "source": "src/table_resource_reload.c",
+      "evidence": "Saved ARM membership/raw bytes and GNU disassembly; original/rebuilt ordered effects and guarded state; docs/recovery/table-resource-reload.md",
+      "validation": "local/validation/table-reload-20261013-final/COMPLETE.json",
+      "remaining": "File load/release/copy modeled; writable ordinary original-address storage; bounded fixtures, no live/concurrency claim"
+    },
+    {
+      "address": "0x002C6048",
+      "name": "smt4_table_reload_copy",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/table_resource_copy.c",
+      "validation": "docs/recovery/table-resource-copy.md",
+      "evidence": "local/validation/table-copy-20261013-shared-final/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002C6048",
+          "0x002C60D0"
+        ]
+      ],
+      "remaining": "Void consumed result; nonoverlapping nonwrapping ordinary memory; unaligned LDR verified in Ghidra only; live alignment-control, faults, timing and MMIO unverified; load/release models retained in reload checker"
+    },
+    {
+      "address": "0x002B0674",
+      "name": "smt4_resource_path_has_prefix",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_path_prefix.c",
+      "validation": "docs/recovery/resource-path-prefix.md",
+      "evidence": "local/validation/path-prefix-20261013-sync-accepted/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002B0674",
+          "0x002B0700"
+        ]
+      ],
+      "remaining": "Stable mapped NUL-terminated paths; existing full-length source reused; UQSUB8 host instruction support; signed high-bit lengths static only; formatting and caller service models retained; live G1/G2 deferred"
+    },
+    {
+      "address": "0x002BF8C0",
+      "name": "smt4_file_path_copy",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_path_copy.c",
+      "validation": "docs/recovery/resource-path-copy.md",
+      "evidence": "local/validation/path-copy-20261013-create-accepted/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002BF8C0",
+          "0x002BF924"
+        ]
+      ],
+      "remaining": "Stable disjoint NUL-terminated mapped RAM, paths through 255 bytes; aligned final-word overread retained; UQSUB8 host instruction support; constructor allocation/clear/synchronization/format modeled; overlap, faults/MMIO/timing and live G1/G2 unverified"
+    },
+    {
+      "address": "0x001284A8",
+      "name": "smt4_file_result_diagnostic",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_result_diagnostic.c",
+      "validation": "docs/recovery/resource-result-diagnostic.md",
+      "evidence": "local/validation/result-diagnostic-20261013-create-accepted/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x001284A8",
+          "0x001284D8"
+        ]
+      ],
+      "remaining": "Producer and concrete delivery r0/r2 transport validated in delivery-return modes; lower lock/wait returned-register, TLS/kernel/sleep/break models remain; nonreturning/live behavior unverified. Historical producer-only evidence unchanged."
+    },
+    {
+      "address": "0x002C4350",
+      "name": "smt4_file_acquire",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_create_sync.c",
+      "validation": "docs/recovery/resource-create-sync.md",
+      "evidence": "local/validation/create-sync-20261013-create-accepted/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002C4350",
+          "0x002C4374"
+        ]
+      ],
+      "remaining": "SVC outcomes, diagnostic and returning break policy modeled; ARM callers, mapped valid storage; live scheduling/faults/MMIO/termination unverified"
+    },
+    {
+      "address": "0x002C54A4",
+      "name": "smt4_file_release",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_create_sync.c",
+      "validation": "docs/recovery/resource-create-sync.md",
+      "evidence": "local/validation/create-sync-20261013-create-accepted/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002C54A4",
+          "0x002C54BC"
+        ]
+      ],
+      "remaining": "SVC outcomes, diagnostic and returning break policy modeled; ARM callers, mapped valid storage; live scheduling/faults/MMIO/termination unverified"
+    },
+    {
+      "address": "0x002C54BC",
+      "name": "smt4_file_check_result",
+      "kind": "function",
+      "mode": "ARM",
+      "confidence": "confirmed within compared domain",
+      "source": "src/resource_create_sync.c",
+      "validation": "docs/recovery/resource-create-sync.md",
+      "evidence": "local/validation/create-sync-20261013-create-accepted/COMPLETE.json",
+      "body_ranges_exclusive": [
+        [
+          "0x002C54BC",
+          "0x002C5524"
+        ]
+      ],
+      "remaining": "SVC outcomes, diagnostic and returning break policy modeled; ARM callers, mapped valid storage; live scheduling/faults/MMIO/termination unverified"
+    }
+  ],
+  "leads": [
     {
       "address": "0x00101300",
       "mode": "ARM",
@@ -1768,7 +2678,13 @@
       "original_binary_helpers_required": false,
       "svc_intercepted": true,
       "kernel_implemented": false,
-      "report": "docs/recovery/resource-arbitration.md"
+      "report": "docs/recovery/resource-arbitration.md",
+      "consumed_return_extension": {
+        "report": "docs/recovery/resource-wait-return.md",
+        "date": "2026-10-13",
+        "contract": "r0/r2; ordinary C callers still consume r0",
+        "evidence": "local/validation/wait-return-20261013-arbitration/COMPLETE.json"
+      }
     },
     {
       "address": "0x002AE72C",
@@ -2996,6 +3912,128 @@
       "original_binary_helpers_required": false,
       "report": "docs/recovery/resource-clear.md",
       "evidence": "local/validation/resource-clear-20261008-final/COMPLETE.json"
+    },
+    {
+      "address": "0x002C5470",
+      "end_exclusive": "0x002C54A4",
+      "source": "src/resource_diagnostic_wait.c",
+      "build": "Freestanding warning-clean C11 ARMv6K",
+      "rebuilt_function_bytes": 64,
+      "combined_binary_bytes": 6104,
+      "original_instruction_addresses": 13,
+      "visited_instruction_addresses": 13,
+      "combined_comparisons": 3170,
+      "dependencies_modeled": true,
+      "base_initializer_and_arbitration_reused": true,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "report": "docs/recovery/resource-diagnostic-wait.md",
+      "evidence": "local/validation/diagnostic-wait-20261011-final-checked/COMPLETE.json"
+    },
+    {
+      "address": "0x002C367C",
+      "end_exclusive": "0x002C373C",
+      "source": "src/resource_diagnostic_wait.c",
+      "build": "Freestanding warning-clean C11 ARMv6K",
+      "rebuilt_function_bytes": 184,
+      "combined_binary_bytes": 6104,
+      "original_instruction_addresses": 48,
+      "visited_instruction_addresses": 48,
+      "combined_comparisons": 3170,
+      "dependencies_modeled": true,
+      "base_initializer_and_arbitration_reused": true,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "report": "docs/recovery/resource-diagnostic-wait.md",
+      "evidence": "local/validation/diagnostic-wait-20261011-final-checked/COMPLETE.json",
+      "consumed_return_extension": {
+        "report": "docs/recovery/resource-wait-return.md",
+        "date": "2026-10-13",
+        "contract": "r0/r2; ordinary C callers still consume r0",
+        "evidence": "local/validation/wait-return-20261013-worker-final/COMPLETE.json"
+      }
+    },
+    {
+      "address": "0x001284A8",
+      "end_exclusive": "0x001284D8",
+      "source": "src/resource_result_diagnostic.c",
+      "build": "Freestanding warning-clean C11 ARMv6 with ARM tail-entry bridge",
+      "rebuilt_function_bytes": 68,
+      "c_body_bytes": 52,
+      "entry_bridge_bytes": 16,
+      "combined_binary_bytes": 956,
+      "original_instruction_addresses": 12,
+      "visited_instruction_addresses": 12,
+      "direct_producer_comparisons": 120,
+      "reused_direct_sync_comparisons": 1168,
+      "constructor_comparisons": 10080,
+      "chain_comparisons": 3888,
+      "dependencies_modeled": true,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "report": "docs/recovery/resource-result-diagnostic.md",
+      "evidence": "local/validation/result-diagnostic-20261013-create-accepted/COMPLETE.json",
+      "remaining": "Producer and concrete delivery r0/r2 transport validated in delivery-return modes; lower lock/wait returned-register, TLS/kernel/sleep/break models remain; nonreturning/live behavior unverified. Historical producer-only evidence unchanged."
+    },
+    {
+      "address": "0x002C4350",
+      "end_exclusive": "0x002C4374",
+      "source": "src/resource_create_sync.c",
+      "build": "Freestanding warning-clean C11 ARMv6 with diagnostic register ABI adapter",
+      "rebuilt_function_bytes": 28,
+      "combined_binary_bytes": 888,
+      "original_instruction_addresses": 9,
+      "visited_instruction_addresses": 9,
+      "direct_sync_comparisons": 1168,
+      "constructor_comparisons": 10080,
+      "chain_comparisons": 3888,
+      "dependencies_modeled": true,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "report": "docs/recovery/resource-create-sync.md",
+      "evidence": "local/validation/create-sync-20261013-create-accepted/COMPLETE.json"
+    },
+    {
+      "address": "0x002C54A4",
+      "end_exclusive": "0x002C54BC",
+      "source": "src/resource_create_sync.c",
+      "build": "Freestanding warning-clean C11 ARMv6 with diagnostic register ABI adapter",
+      "rebuilt_function_bytes": 20,
+      "combined_binary_bytes": 888,
+      "original_instruction_addresses": 6,
+      "visited_instruction_addresses": 6,
+      "direct_sync_comparisons": 1168,
+      "constructor_comparisons": 10080,
+      "chain_comparisons": 3888,
+      "dependencies_modeled": true,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "report": "docs/recovery/resource-create-sync.md",
+      "evidence": "local/validation/create-sync-20261013-create-accepted/COMPLETE.json"
+    },
+    {
+      "address": "0x002C54BC",
+      "end_exclusive": "0x002C5524",
+      "source": "src/resource_create_sync.c",
+      "build": "Freestanding warning-clean C11 ARMv6 with diagnostic register ABI adapter",
+      "rebuilt_function_bytes": 160,
+      "combined_binary_bytes": 888,
+      "original_instruction_addresses": 26,
+      "visited_instruction_addresses": 26,
+      "direct_sync_comparisons": 1168,
+      "constructor_comparisons": 10080,
+      "chain_comparisons": 3888,
+      "dependencies_modeled": true,
+      "live_verified": false,
+      "binary_matching": false,
+      "original_binary_helpers_required": false,
+      "report": "docs/recovery/resource-create-sync.md",
+      "evidence": "local/validation/create-sync-20261013-create-accepted/COMPLETE.json"
     }
   ],
   "recovered_regions": [

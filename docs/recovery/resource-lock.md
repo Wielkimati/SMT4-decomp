@@ -122,3 +122,87 @@ explicit arbitration/OS models.
 The SVC `0x22` marshalling wrapper at `0x002A88FC` is a separate bounded recovery
 candidate; kernel semantics and allocation/file I/O remain open. No emulator,
 save, profile or original dump was changed. G1/G2/live verification stay deferred.
+
+## Acquire consumed-r2 extension (2026-10-13)
+
+No reprioritization was needed: base acquire's consumed r2 is a concrete dependency
+of recursive ownership and subsequent delivery-lock integration. Prior wait audit
+source/tool hashes agree, except the intentionally extended signal header;
+`local/validation/acquire-return-20261013-audit/handoff-check.json` records the check.
+
+Acceptance declared before implementation: preserve the base state machine and
+return the lock address in r2 after initial fast success, zero after either slow
+success; forward this through recursive acquire, preserve incoming r2 when already
+owned, and retain retries, CLREX, guarded fields, ABI and pending-prefix evidence.
+Require a warning-clean ARM build, original/rebuilt/oracle comparisons, fault
+rejections and affected signal/pool regressions. TLS/kernel/monitor models remain
+explicit. This extends one existing contract, not the recovered-entry total.
+
+Original `0x001464F8..0x001465D4` starts with MOV r2,r0. Initial STREX uses r3,
+so even failed initial stores preserve that address. Once the slow path is entered,
+either successful acquisition STREX writes zero to r2. Independent instruction
+evidence is in `local/validation/wait-return-20261013-audit/next-lock-acquire.log`
+and this package's base `original-001464f8-disassembly.log`.
+
+`src/resource_lock.c` retains the exclusive C state machine, with a 216-byte C body
+returning the consumed word and a 16-byte ARM entry bridge publishing it in r2.
+The bridge maintains 8-byte call alignment. Recursive acquire `0x002C3AFC` is reused
+unchanged: the already-owned route preserves incoming r2; the base route forwards
+r2 across its TLS reread and wrapping count increment. Release source is unchanged.
+Other raw scratch returns of base acquire are not claimed. The bridge is an ABI
+implementation detail, not another original game routine. No call model is removed
+in this package; the existing executed base dependency gains its missing contract.
+
+The independent transition oracle now derives r2 from the acquisition phase, and
+both original and rebuilt instructions must agree with it. The final recursive
+checker varies incoming r2 with count/TLS, checks base-return r2 before wrapper
+continuation, and carries r2 across persistent calls without reseeding it. Pending
+prefixes assert state/event agreement but make no return or liveness claim.
+
+Validation evidence under `local/validation/acquire-return-20261013-*`:
+
+- `base/COMPLETE.json`: 316-byte unit; all 3,092 acquire and 1,064 release pairs,
+  including 28 pending prefixes and all 75 original base instruction sites.
+- `recursive-final/COMPLETE.json`: final direct corpus and source/tool identities;
+  404-byte unit, 164 pairs, four pending prefixes and two persistent lifetimes.
+- `fast-negative/NEGATIVE.json` and `slow-negative/NEGATIVE.json`: compiled faults
+  replacing fast address with zero or slow zero with one are rejected at recursive
+  cases 0 and 96 respectively by the r2 oracle. These ran before the final additional
+  incoming-register variation; that refinement retains the same return assertions.
+- `signal/COMPLETE.json` and `backend/COMPLETE.json`: affected executed signal/lock
+  and recursive pool-caller regressions, with their original boundaries retained.
+- `audit/COMPLETE.json`, `jobs.json`, `public.log`: exact completed jobs, artifact
+  verification, final source identities and public regression evidence.
+
+Reproduce from SMT4-decomp, with sequential Ghidra jobs:
+
+```powershell
+python tools/check_resource_lock.py --output local/validation/NEW-BASE
+python tools/check_resource_recursive_lock.py --output local/validation/NEW-RECURSIVE
+python tools/check_resource_recursive_lock.py --mutant acquire-fast-r2 --output local/validation/NEW-FAST-FAULT
+python tools/check_resource_recursive_lock.py --mutant acquire-slow-r2 --output local/validation/NEW-SLOW-FAULT
+python tools/check_resource_signal_lock.py --recover-arbitration --output local/validation/NEW-SIGNAL
+python tools/check_resource_worker_backend.py --recover-clear --recover-locks --output local/validation/NEW-BACKEND
+python -m unittest discover -s tests
+```
+
+Bounded aligned mapped storage, scheduled exclusives/interference and modeled TLS,
+arbitration/kernel results remain the domain. Signal regression executes the SVC
+marshalling wrapper but models its kernel result. Pool regression retains its
+service/diagnostic boundaries. Physical concurrency, arbitrary caller scratch
+provenance, invalid pointers, timing, full startup and deferred live G1/G2 remain
+open. The earlier report's counts and boundaries above are historical evidence.
+
+### Next independent source milestone
+
+Recover delivery `0x002AD7E8..0x002AD8F0` scratch-r2 provenance at acquire/release
+sites, then replace recursive lock models in create/chain
+`--recover-result-diagnostic`. Reuse base/recursive locks and wait source. Inspect
+`local/validation/wait-return-20261013-audit/next-delivery-lock.log`,
+`src/resource_worker_diagnostic.c`, `tools/ghidra/ResourceDiagnosticDelivery.java`,
+and the delivery/wait reports. Failed connect at `0x001382CC`, request
+`0x00146964` with skipped close, close SVC 0x23, and retry delay `0x002BB4F0`
+can supply incoming r2 to a nonfinal recursive release; establish those consumed
+contracts before relinking. Existing C scratch allocations cannot stand in for
+original register provenance. Include nested ownership and retry fixtures; do
+not count already recovered lock entries again. Keep kernel/TLS policies explicit.

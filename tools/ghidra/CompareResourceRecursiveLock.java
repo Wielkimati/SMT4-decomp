@@ -43,6 +43,7 @@ public class CompareResourceRecursiveLock extends CompareResourceLock {
         void invoke(boolean path,boolean release,long initial,long owner,long count,long firstTls,long nextTls,
                 long[] reads,boolean[] failures,int limit,boolean mutation,boolean persistent) throws Exception {
             executing=false;
+            long incomingR2=persistent?register("r2"):(count^firstTls^0x12340002L)&MASK;
             plan=new Plan(release,initial,reads,failures,limit,0x87654321L,0x13579bdfL,false);
             boolean usesBase=release ? count==1 : owner!=firstTls;
             long afterCount=mutation && usesBase && plan.calls>0 && !release ? 0xfffffffeL : count;
@@ -71,6 +72,7 @@ public class CompareResourceRecursiveLock extends CompareResourceLock {
             for(var r:currentProgram.getLanguage().getRegisters())if(r.isBaseRegister()&&!r.isProcessorContext())register(r,0);
             for(int r=0;r<=12;r++)register("r"+r,0x12340000L+r);
             register("cpsr",0x10);register("sp",STACK);register("lr",RETURN);register("r0",DATA);
+            register("r2",incomingR2);
             thread.overrideContext(new RegisterValue(currentProgram.getProgramContext().getBaseContextRegister(),BigInteger.ZERO));
             thread.overrideCounter(toAddr(path?rebuilt[release?1:0]:release?RE:RA));executing=true;
             int steps=0;long baseReturn=-1;
@@ -78,6 +80,7 @@ public class CompareResourceRecursiveLock extends CompareResourceLock {
                 long pc=thread.getCounter().getOffset();
                 if(inBase && pc==baseReturn) {
                     require(cursor==plan.events.size(),"Base schedule not consumed");event("base-return",release?1:0);
+                    require(register("r2")==plan.returnedR2,"Base return r2 before wrapper continuation");
                     inBase=false;tls=nextTls;
                 }
                 if(pc==RETURN)break;
@@ -115,6 +118,8 @@ public class CompareResourceRecursiveLock extends CompareResourceLock {
             require(Arrays.equals(memory(DATA-32,96),expected),"Final object/guards");
             require(word(expected,32)==(usesBase?plan.current:initial),"Final base oracle");
             if(!usesBase || !plan.pending) {
+                if(!usesBase)require(register("r2")==incomingR2,"Recursive no-base r2 preservation");
+                else require(register("r2")==plan.returnedR2,"Recursive base r2 return");
                 require(register("sp")==STACK,"SP restoration");for(int r=4;r<=11;r++)require(register("r"+r)==0x12340000L+r,"Callee saved");
             } else require(pcPending(),"Pending returned");
             for(byte b:memory(STACK-0x1000,0xf00))require(b==(byte)0x96,"Stack guard");

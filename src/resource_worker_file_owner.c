@@ -42,27 +42,66 @@ uint32_t smt4_worker_file_handle(uint32_t *object)
     return object[1];
 }
 
-uint32_t *smt4_worker_file_teardown(uint32_t *object)
-{
-    if (object[1] != 0) {
-        close_handle(object[1]);
-        object[1] = 0;
-    }
-    return object;
-}
+/* 0x00356578: r2 is unchanged for a zero handle; otherwise it is the
+ * kernel-returned scratch word. Clearing the handle must not overwrite it. */
+__asm__(
+    ".text\n"
+    ".align 2\n"
+    ".arm\n"
+    ".global smt4_worker_file_teardown\n"
+    ".type smt4_worker_file_teardown, %function\n"
+    "smt4_worker_file_teardown:\n"
+    "push {r4, lr}\n"
+    "add r4, r0, #4\n"
+    "ldr r0, [r0, #4]\n"
+    "cmp r0, #0\n"
+    "beq 1f\n"
+    "svc 0x23\n"
+    "mov r0, #0\n"
+    "str r0, [r4]\n"
+    "1: sub r0, r4, #4\n"
+    "pop {r4, pc}\n"
+    ".size smt4_worker_file_teardown, .-smt4_worker_file_teardown\n"
+    ".ltorg\n"
+);
 
-void smt4_worker_file_dispose(uint32_t *object)
-{
-    if (object[1] != 0) {
-        uint32_t handle = smt4_worker_file_handle(object);
-        smt4_worker_file_service_close(&handle);
-    }
-    const uint32_t *vtable = (const uint32_t *)(uintptr_t)object[0];
-    ((void (*)(uint32_t *))(uintptr_t)vtable[0x30 / 4])(object);
-    uint32_t *pool = smt4_worker_file_pool;
-    smt4_worker_backend_acquire(pool + 0x30 / 4);
-    object[0] = pool[0x24 / 4];
-    pool[0x24 / 4] = (uint32_t)(uintptr_t)object;
-    pool[0x2c / 4] -= 1u;
-    smt4_worker_backend_release(pool + 0x30 / 4);
-}
+/* 0x00356438: retain r2 across virtual-target lookup and node publication.
+ * Nested locks preserve teardown/close output; an uncontended final release
+ * produces one. The returned value reaches the owning object diagnostics. */
+__asm__(
+    ".text\n"
+    ".align 2\n"
+    ".arm\n"
+    ".global smt4_worker_file_dispose\n"
+    ".type smt4_worker_file_dispose, %function\n"
+    "smt4_worker_file_dispose:\n"
+    "push {r3, r4, r5, r6, r7, lr}\n"
+    "mov r5, r0\n"
+    "ldr r0, [r0, #4]\n"
+    "cmp r0, #0\n"
+    "beq 1f\n"
+    "mov r0, r5\n"
+    "bl smt4_worker_file_handle\n"
+    "str r0, [sp]\n"
+    "mov r0, sp\n"
+    "bl smt4_worker_file_service_close\n"
+    "1: ldr r0, [r5]\n"
+    "ldr r1, [r0, #48]\n"
+    "mov r0, r5\n"
+    "blx r1\n"
+    "ldr r6, =smt4_worker_file_pool\n"
+    "add r4, r6, #48\n"
+    "mov r0, r4\n"
+    "bl smt4_worker_backend_acquire\n"
+    "ldr r0, [r6, #36]\n"
+    "str r0, [r5]\n"
+    "str r5, [r6, #36]\n"
+    "ldr r0, [r6, #44]\n"
+    "sub r0, r0, #1\n"
+    "str r0, [r6, #44]\n"
+    "mov r0, r4\n"
+    "pop {r3, r4, r5, r6, r7, lr}\n"
+    "b smt4_worker_backend_release\n"
+    ".size smt4_worker_file_dispose, .-smt4_worker_file_dispose\n"
+    ".ltorg\n"
+);

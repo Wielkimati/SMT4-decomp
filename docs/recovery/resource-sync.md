@@ -137,3 +137,12 @@ the subsequent constructor and wait/delay packages raise it to twenty-three.
 Actual file I/O/allocation, compiler/ABI research and host address boundaries remain
 open. G1/G2 and live verification remain deferred/unpassed. No emulator, save,
 profile, original dump, PC runtime or full 3DS build was changed by this package.
+
+## Concrete path-prefix integration (2026-10-13)
+
+The optional `--recover-prefix` checker mode now executes recovered predicate
+`0x002B0674` and reuses the existing full-length source `0x002C32E4`. See
+[the prefix report](resource-path-prefix.md) for exact two-pass read semantics,
+caller integration, bounded instruction support and current evidence. Formatting
+and the other documented service boundaries remain modeled. The default mode
+retains this report's earlier prefix model; it has not silently gained recovery.

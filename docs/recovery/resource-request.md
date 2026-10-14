@@ -147,3 +147,12 @@ descriptor constructor: 1,163 scenarios pass with explicit worker scheduling
 and release models. Next trace the dispatcher that consumes descriptor `+0x130/+0x134`
 before claiming actual asynchronous execution. Release backend `0x002C43B4`
 and compiler/host-address research remain separate recovery work.
+
+## Concrete path-prefix integration (2026-10-13)
+
+The optional `--recover-prefix` checker mode now executes recovered predicate
+`0x002B0674` and reuses the existing full-length source `0x002C32E4`. See
+[the prefix report](resource-path-prefix.md) for exact two-pass read semantics,
+caller integration, bounded instruction support and current evidence. Formatting
+and the other documented service boundaries remain modeled. The default mode
+retains this report's earlier prefix model; it has not silently gained recovery.

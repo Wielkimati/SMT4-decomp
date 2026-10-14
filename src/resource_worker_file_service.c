@@ -40,12 +40,25 @@ uint32_t smt4_worker_file_service_open(uint32_t *service, uint32_t *handle,
     return command[1];
 }
 
-uint32_t smt4_worker_file_service_close(uint32_t *handle)
-{
-    volatile uint32_t *command = command_buffer();
-    command[0] = UINT32_C(0x08080000);
-    uint32_t result = send_request(*handle);
-    if (result >> 31)
-        return result;
-    return command[1];
-}
+/* 0x00356D5C: r0 selects kernel/service status; r2 transports the kernel
+ * scratch output even if a service effect cleared the file handle. */
+__asm__(
+    ".text\n"
+    ".align 2\n"
+    ".arm\n"
+    ".global smt4_worker_file_service_close\n"
+    ".type smt4_worker_file_service_close, %function\n"
+    "smt4_worker_file_service_close:\n"
+    "push {r4, lr}\n"
+    "mrc p15, 0, r4, c13, c0, 3\n"
+    "ldr r1, =0x08080000\n"
+    "str r1, [r4, #128]!\n"
+    "ldr r0, [r0]\n"
+    "svc 0x32\n"
+    "and r1, r0, #0x80000000\n"
+    "cmp r1, #0\n"
+    "ldrge r0, [r4, #4]\n"
+    "pop {r4, pc}\n"
+    ".size smt4_worker_file_service_close, .-smt4_worker_file_service_close\n"
+    ".ltorg\n"
+);

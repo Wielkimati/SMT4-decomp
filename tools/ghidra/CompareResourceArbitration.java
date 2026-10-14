@@ -43,7 +43,7 @@ public class CompareResourceArbitration extends CompareResourceLifecycle {
             for(int r=0;r<4;r++) register("r"+r,args[r]);
             thread.overrideContext(new RegisterValue(currentProgram.getProgramContext().getBaseContextRegister(),BigInteger.ZERO));
             thread.overrideCounter(toAddr(rebuiltPath ? rebuilt[0] : ENTRY)); executing=true;
-            int steps=0,calls=0;
+            int steps=0,calls=0;long payload=0;
             while(thread.getCounter().getOffset()!=RETURN) {
                 long pc=thread.getCounter().getOffset();
                 require(rebuiltPath ? within(pc,4,BUILD,BUILD+codeSize) : within(pc,4,ENTRY,END),"Unexpected PC");
@@ -58,11 +58,12 @@ public class CompareResourceArbitration extends CompareResourceLifecycle {
                     // r6-r11, SP, LR and memory are preserved by this boundary model.
                     for(int r=0;r<=5;r++) register("r"+r,Integer.toUnsignedLong(random.nextInt()));
                     register("r12",Integer.toUnsignedLong(random.nextInt()));
-                    register("r0",response); register("cpsr",0xa0000010L);
+                    payload=register("r2");register("r0",response); register("cpsr",0xa0000010L);
                     thread.overrideContext(new RegisterValue(currentProgram.getProgramContext().getBaseContextRegister(),BigInteger.ZERO));
                     thread.overrideCounter(toAddr(pc+4));
                 } else thread.stepInstruction();
             }
+            require(register("r2")==payload,"Arbitration returned r2");
             require(calls==1 && register("r0")==response,"Missing SVC/result changed");
             require(register("sp")==entrySp,"SP restoration");
             for(int r=4;r<=11;r++) require(register("r"+r)==saved[r],"Callee saved r"+r);
@@ -117,7 +118,7 @@ public class CompareResourceArbitration extends CompareResourceLifecycle {
         }
         Files.writeString(out.resolve("original-ghidra.txt"),listing);
         Files.writeString(out.resolve("comparison.json"),String.format(Locale.ROOT,
-            "{\"arbitration_cases\":%d,\"original_instruction_addresses\":%d,\"max_steps\":%d,\"svc_calls_both_paths\":%d,\"svc_intercepted\":true,\"kernel_implemented\":false,\"live_verified\":false}\n",
+            "{\"arbitration_cases\":%d,\"original_instruction_addresses\":%d,\"max_steps\":%d,\"svc_calls_both_paths\":%d,\"r2_transport_checked\":true,\"svc_intercepted\":true,\"kernel_implemented\":false,\"live_verified\":false}\n",
             cases,visited.size(),maxSteps,2*cases));
         println("SMT4_ARBITRATION_COMPARE_OK");
     }

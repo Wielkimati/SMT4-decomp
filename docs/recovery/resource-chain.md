@@ -1,5 +1,10 @@
 # Integrated synchronous resource chain
 
+2026-10-13 update: [wait consumed-return extension](resource-wait-return.md)
+establishes wait/arbitration r0/r2 and replaces wait/initializer models in
+create/chain `--recover-result-diagnostic`. Earlier evidence below retains its
+historical boundaries; lower locks and kernel outcomes remain modeled.
+
 2026-10-06. EU base v0 expanded-code SHA-256
 `834938d18d2b7c688311c46c27bed813d0d7a9f8e3cbb61da8a6a3f23d360ebd`.
 This package integrates existing recovered source; it adds no new entry-point
@@ -90,6 +95,15 @@ Mutated sources stay local and no negative run writes a success marker.
 
 ## Limits and next work
 
+2026-10-13: `--recover-strings` executes new path copy `0x002BF8C0` and reused
+length `0x002C32E4` in the constructor. The 1,144-byte unit passes all 3,888
+pairs (including 229 bounded pending prefixes), with 250 original sites and
+ordered string access checks. See [path-copy recovery](resource-path-copy.md)
+and `local/validation/path-copy-20261013-chain-accepted/COMPLETE.json`.
+Outer prefix, allocation, clear, synchronization, result handling, formatting,
+signal and sleep remain modeled in this mode. Default and older signal modes
+retain their historical boundaries; no other recovery option is implied.
+
 Allocation must return a valid nonnull descriptor; paths and list nodes must be
 valid and nonoverlapping, and lists finite/acyclic. Concurrent mutation outside
 the scheduled models, allocation failure, invalid or format-bearing paths,
@@ -110,3 +124,27 @@ Integration into the older bulk/lifecycle
 checkers is still pending; they retain their documented higher-level models.
 Original compiler/ABI and host address-boundary research remain open. No emulator,
 save, profile or original dump was changed.
+
+## Constructor synchronization mode (2026-10-13)
+
+`--recover-sync` now executes recovered acquire `0x002C4350`, release
+`0x002C54A4` and result dispatcher `0x002C54BC`, and composes with
+`--recover-strings`. See [synchronization recovery](resource-create-sync.md)
+for exact SVC marshalling, failure publication, caller-address/r2 transport,
+ABI and connected comparison evidence. Kernel outcomes, diagnostic delivery and
+returning break policy remain explicit models. Allocation, clear and formatting
+remain modeled in these modes; the chain retains outer-prefix and timing models.
+The older default and string-only boundaries above remain unchanged.
+
+## Result diagnostic producer mode (2026-10-13)
+
+`--recover-result-diagnostic` implies `--recover-sync` and executes new producer
+`0x001284A8..0x001284D8`, composing with `--recover-strings`. See
+[result diagnostic recovery](resource-result-diagnostic.md) for record store
+order/widths, type narrowing, unknown-byte preservation and the returned-r2
+contract. The [delivery return extension](resource-delivery-return.md) now
+executes `0x002AD7E8` and reused process/request/copy/connect/delay source in
+this mode, replacing its original r0/r2 outcome model. Lower lock/wait returned
+registers, TLS/kernel/sleep, break, allocation, clear, formatting and outer-chain
+policies remain explicit boundaries. Earlier modes keep their historical models
+and evidence.

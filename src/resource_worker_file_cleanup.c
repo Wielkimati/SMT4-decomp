@@ -14,20 +14,21 @@ void smt4_worker_file_close(uint32_t backend)
     }
 }
 
-uint32_t *smt4_worker_file_cleanup_shared(uint32_t *object)
+uint32_t *smt4_worker_file_cleanup_shared(uint32_t *object, uint32_t unused, uint32_t payload)
 {
+    (void)unused;
     if (object[1] & ~UINT32_C(1)) {
         if (object[1] & 1)
-            smt4_worker_file_preclose(object[1]);
+            smt4_worker_file_preclose(object[1], 0, payload);
         smt4_worker_file_close(object[1] & ~UINT32_C(1));
         object[1] = 0;
     }
     return object;
 }
 
-uint32_t *smt4_worker_file_cleanup(uint32_t *object)
+uint32_t *smt4_worker_file_cleanup(uint32_t *object, uint32_t unused, uint32_t payload)
 {
-    return smt4_worker_file_cleanup_shared(object);
+    return smt4_worker_file_cleanup_shared(object, unused, payload);
 }
 
 void smt4_worker_object_release(uint32_t *object)
@@ -36,7 +37,7 @@ void smt4_worker_object_release(uint32_t *object)
         smt4_resource_release((uint32_t)(uintptr_t)object);
 }
 
-void smt4_worker_file_destroy(uint32_t *object)
+void smt4_worker_file_destroy(uint32_t *object, uint32_t unused, uint32_t payload)
 {
-    smt4_worker_object_release(smt4_worker_file_cleanup_shared(object));
+    smt4_worker_object_release(smt4_worker_file_cleanup_shared(object, unused, payload));
 }

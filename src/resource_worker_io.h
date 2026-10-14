@@ -20,6 +20,6 @@ uint32_t smt4_worker_data_allocate(uint32_t first, uint32_t second, uint32_t thi
                                   uint32_t size, uint32_t alignment, uint32_t direction);
 void smt4_worker_io_acquire(uint32_t handle);
 void smt4_worker_io_release(uint32_t handle);
-void smt4_worker_file_preclose(uint32_t handle);
+#include "resource_break.h"
 void smt4_worker_file_close(uint32_t handle);
 #endif

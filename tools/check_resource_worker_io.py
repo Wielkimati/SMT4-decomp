@@ -19,10 +19,16 @@ def main():
     parser.add_argument("--recover-file-open", action="store_true", help="Execute prefix/open dispatch with modeled backend; implies --recover-file-read")
     parser.add_argument("--recover-file-read", action="store_true", help="Execute lower read loop with modeled OS read; implies --recover-file-position")
     parser.add_argument("--recover-file-position", action="store_true", help="Execute lower size/cache, seek and position; implies --recover-file-methods")
-    parser.add_argument("--mutant", choices=("open-early-return", "flags-bit-test", "short-read-size", "cached-close-handle", "advance-failed-conversion", "object-route", "object-size", "object-direction", "object-return", "data-backlink", "size-truncate", "size-error-sign", "seek-offset", "seek-origin", "seek-site", "read-receiver", "read-return", "cache-failure", "position-equality", "position-unsigned", "relative-carry", "origin-error", "size-output-failure", "loop-sign", "loop-count-failure", "loop-buffer", "loop-remaining", "loop-positive", "loop-zero", "prefix-sign", "prefix-limit", "prefix-last", "open-length", "open-status", "open-preserve", "cleanup-reload", "cleanup-tag-only", "cleanup-clear", "cleanup-return", "close-slot", "release-null", "path-initial", "path-limit", "path-error", "path-slot", "path-result", "path-mode", "locale-gap", "locale-trail", "locale-reset", "locale-yen", "bootstrap-offset", "bootstrap-empty", "bootstrap-compare", "config-mask", "config-byte", "config-order", "registry-vacancy", "registry-sign", "registry-reload"))
+    parser.add_argument("--mutant", choices=("open-early-return", "flags-bit-test", "short-read-size", "cached-close-handle", "advance-failed-conversion", "object-route", "object-size", "object-direction", "object-return", "data-backlink", "size-truncate", "size-error-sign", "seek-offset", "seek-origin", "seek-site", "read-receiver", "read-return", "cache-failure", "position-equality", "position-unsigned", "relative-carry", "origin-error", "size-output-failure", "loop-sign", "loop-count-failure", "loop-buffer", "loop-remaining", "loop-positive", "loop-zero", "prefix-sign", "prefix-limit", "prefix-last", "open-length", "open-status", "open-preserve", "cleanup-reload", "cleanup-tag-only", "cleanup-clear", "cleanup-return", "close-slot", "release-null", "path-initial", "path-limit", "path-error", "path-slot", "path-result", "path-mode", "locale-gap", "locale-trail", "locale-reset", "locale-yen", "bootstrap-offset", "bootstrap-empty", "bootstrap-compare", "config-mask", "config-byte", "config-order", "registry-vacancy", "registry-sign", "registry-reload", "break-clear", "break-payload", "break-reason", "break-svc", "break-prefix-payload", "init-count", "init-stride", "init-tail", "init-base", "init-startup-count"))
     parser.add_argument("--recover-locale-config", action="store_true", help="Execute locale category query/configuration; implies --recover-locale-bootstrap")
     parser.add_argument("--recover-prefix", action="store_true", help="Execute prefix registration/removal; implies --recover-locale-config")
+    parser.add_argument("--recover-break", action="store_true", help="Execute break callback dispatch and SVC boundary; implies --recover-prefix")
+    parser.add_argument("--recover-registry-initialize", action="store_true", help="Execute registry startup slice and array/record initialization; implies --recover-break")
     args = parser.parse_args()
+    if args.recover_registry_initialize:
+        args.recover_break = True
+    if args.recover_break:
+        args.recover_prefix = True
     if args.recover_prefix:
         args.recover_locale_config = True
     if args.recover_locale_config:
@@ -69,7 +75,15 @@ def main():
     bootstrap_sources = [ROOT / "src/resource_worker_locale_bootstrap.c"] if args.recover_locale_bootstrap else []
     config_sources = [ROOT / "src/resource_worker_locale_config.c"] if args.recover_locale_config else []
     prefix_sources = [ROOT / "src/resource_worker_prefix.c"] if args.recover_prefix else []
-    prefix_mutant = args.mutant and args.mutant.startswith("registry-")
+    break_sources = [ROOT / "src/resource_break.c"] if args.recover_break else []
+    initialize_sources = [ROOT / "src/resource_array_initialize.c", ROOT / "src/resource_worker_prefix_initialize.c"] if args.recover_registry_initialize else []
+    initialize_mutant = args.mutant and args.mutant.startswith("init-")
+    if initialize_mutant and not args.recover_registry_initialize:
+        parser.error("Initialization faults require --recover-registry-initialize")
+    break_mutant = args.mutant and args.mutant.startswith("break-")
+    if break_mutant and not args.recover_break:
+        parser.error("Break faults require --recover-break")
+    prefix_mutant = args.mutant and (args.mutant.startswith("registry-") or args.mutant == "break-prefix-payload")
     if prefix_mutant and not args.recover_prefix:
         parser.error("Registry faults require --recover-prefix")
     config_mutant = args.mutant and args.mutant.startswith("config-")
@@ -107,7 +121,7 @@ def main():
             "open-early-return": ("if (result >> 31)\n        d[0] = 5;\n    o = object(d);\n    d[6]", "if (result >> 31) { d[0] = 5; return; }\n    o = object(d);\n    d[6]"),
             "flags-bit-test": ("(flags == 1 || flags == 17)", "(flags & 1)"),
             "short-read-size": ("smt4_worker_io_busy = 0;", "d[6] = bytes_read;\n    smt4_worker_io_busy = 0;"),
-            "cached-close-handle": ("if (o[1] & 1)\n            smt4_worker_file_preclose(o[1]);\n        smt4_worker_file_close(o[1] & ~UINT32_C(1));", "uint32_t saved = o[1];\n        if (saved & 1)\n            smt4_worker_file_preclose(saved);\n        smt4_worker_file_close(saved & ~UINT32_C(1));"),
+            "cached-close-handle": ("if (o[1] & 1)\n            smt4_worker_file_preclose(o[1], 0, break_payload);\n        smt4_worker_file_close(o[1] & ~UINT32_C(1));", "uint32_t saved = o[1];\n        if (saved & 1)\n            smt4_worker_file_preclose(saved, 0, break_payload);\n        smt4_worker_file_close(saved & ~UINT32_C(1));"),
             "advance-failed-conversion": ("break;\n        ++out;", "{ ++out; break; }\n        ++out;"),
             "object-route": ("(0x100, 0x100, 0, bytes, 1)", "(0x10000, 0x100, 0, bytes, 1)"),
             "object-size": ("0, bytes, 1)", "0, (uint16_t)bytes, 1)"),
@@ -147,7 +161,7 @@ def main():
             "open-preserve": ("if (!(result >> 31))", "if (1)"),
         })
         edits.update({
-            "cleanup-reload": ("if (object[1] & 1)\n            smt4_worker_file_preclose(object[1]);\n        smt4_worker_file_close(object[1] & ~UINT32_C(1));", "uint32_t saved = object[1];\n        if (saved & 1) smt4_worker_file_preclose(saved);\n        smt4_worker_file_close(saved & ~UINT32_C(1));"),
+            "cleanup-reload": ("if (object[1] & 1)\n            smt4_worker_file_preclose(object[1], 0, payload);\n        smt4_worker_file_close(object[1] & ~UINT32_C(1));", "uint32_t saved = object[1];\n        if (saved & 1) smt4_worker_file_preclose(saved, 0, payload);\n        smt4_worker_file_close(saved & ~UINT32_C(1));"),
             "cleanup-tag-only": ("if (object[1] & ~UINT32_C(1))", "if (object[1] != 0)"),
             "cleanup-clear": ("object[1] = 0;", "object[1] = 1;"),
             "cleanup-return": ("return object;", "return object + 1;"),
@@ -183,6 +197,20 @@ def main():
             "registry-sign": ("0u - (byte >> 7)", "0u"),
             "registry-reload": ("((void (*)(uint32_t))(uintptr_t)vtable[0x30 / 4])(backend);\n            if (smt4_worker_backend_state[2] == backend)", "uint32_t cached = smt4_worker_backend_state[2];\n            ((void (*)(uint32_t))(uintptr_t)vtable[0x30 / 4])(backend);\n            if (cached == backend)"),
         })
+        edits.update({
+            "break-clear": ("smt4_break_callback_slot = 0;", "smt4_break_callback_slot = callback;"),
+            "break-payload": ("callback(reason, 0, 0, 0, 0, payload);", "callback(reason, 0, 0, 0, 0, payload ^ 1u);"),
+            "break-reason": ("smt4_break_dispatch(0, 0, payload)", "smt4_break_dispatch(unused0, 0, payload)"),
+            "break-svc": ("smt4_break_svc(reason, 0, 0)", "smt4_break_svc(reason, 0, 1)"),
+            "break-prefix-payload": ("removing ? 8u :", "removing ? 7u :"),
+        })
+        edits.update({
+            "init-count": ("while (count != 0)", "while (count > 1)"),
+            "init-stride": ("cursor += stride;", "cursor += stride | 16u;"),
+            "init-base": ("return base;", "return base + stride;"),
+            "init-tail": ("record[2] = 0;", "record[2] = 0; record[3] = 0;"),
+            "init-startup-count": ("initialize, 16, 32)", "initialize, 16, 31)"),
+        })
         old, new = edits[args.mutant]
         if allocation_mutant:
             source = allocation_sources[1 if args.mutant == "data-backlink" else 0]
@@ -206,6 +234,10 @@ def main():
             source = config_sources[0]
         if prefix_mutant:
             source = prefix_sources[0]
+        elif break_mutant:
+            source = break_sources[0]
+        if initialize_mutant:
+            source = initialize_sources[1 if args.mutant in ("init-tail", "init-startup-count") else 0]
         text = source.read_text()
         if text.count(old) != 1:
             raise RuntimeError("Mutation anchor")
@@ -243,6 +275,12 @@ def main():
             source = ROOT / "src/resource_worker_io.c"
         if prefix_mutant:
             prefix_sources[0] = source
+            source = ROOT / "src/resource_worker_io.c"
+        elif break_mutant:
+            break_sources[0] = source
+            source = ROOT / "src/resource_worker_io.c"
+        if initialize_mutant:
+            initialize_sources[1 if args.mutant in ("init-tail", "init-startup-count") else 0] = source
             source = ROOT / "src/resource_worker_io.c"
     elf, binary = output / "resource-worker-io.elf", output / "resource-worker-io.bin"
     definitions = {
@@ -308,10 +346,14 @@ def main():
         definitions.update({"smt4_worker_locale_default_name": 0x2c6c40, "smt4_worker_locale_fixed_table": 0x42a184})
     if args.recover_prefix:
         definitions.update({"smt4_worker_backend_state": 0x44e650, "smt4_worker_prefix_fallback": 0x407fbc, "smt4_worker_prefix_diagnostic": 0x2bce9c})
+    if args.recover_break:
+        del definitions["smt4_worker_file_preclose"]
+        del definitions["smt4_worker_prefix_diagnostic"]
+        definitions["smt4_break_callback_slot"] = 0x44e450
     run([str(tool_dir / "arm-none-eabi-gcc.exe"), "-std=c11", "-O2", "-march=armv6k",
          "-marm", "-mfloat-abi=soft", "-ffreestanding", "-fno-builtin", "-fno-unwind-tables",
          "-fno-asynchronous-unwind-tables", "-Wall", "-Wextra", "-Werror", "-nostdlib",
-         str(source), *map(str, allocation_sources + method_sources + position_sources + read_sources + open_sources + cleanup_sources + path_sources + locale_sources + bootstrap_sources + config_sources + prefix_sources), "-I", str(ROOT / "src"), "-Wl,-Ttext=0x600000",
+         str(source), *map(str, allocation_sources + method_sources + position_sources + read_sources + open_sources + cleanup_sources + path_sources + locale_sources + bootstrap_sources + config_sources + prefix_sources + break_sources + initialize_sources), "-I", str(ROOT / "src"), "-Wl,-Ttext=0x600000",
          "-Wl,--entry=smt4_worker_state0_io", "-Wl,--build-id=none",
          *[f"-Wl,--defsym,{name}={address:#x}" for name, address in definitions.items()],
          "-o", str(elf)], output, "build")
@@ -404,9 +446,17 @@ def main():
                 stream.write(f"{entries[name]}\n")
         for label, start, stop in (("register",0x2b5e70,0x2b5fcc),("remove",0x2c4054,0x2c41b4)):
             run([str(tool_dir / "arm-none-eabi-objdump.exe"), "-D", "-b", "binary", "-m", "arm", "--adjust-vma=0x100000", f"--start-address={start:#x}", f"--stop-address={stop:#x}", str(code)], output, "original-prefix-"+label+"-disassembly")
+    if args.recover_break:
+        (output / "break-entries.txt").write_text("\n".join(str(entries[n]) for n in ("smt4_worker_file_preclose", "smt4_break_dispatch", "smt4_break_svc")) + "\n")
+        for label, start, stop in (("break-zero",0x2bce9c,0x2bcea4),("break-dispatch",0x2ad90c,0x2ad95c),("break-svc",0x1526b4,0x1526bc)):
+            run([str(tool_dir / "arm-none-eabi-objdump.exe"), "-D", "-b", "binary", "-m", "arm", "--adjust-vma=0x100000", f"--start-address={start:#x}", f"--stop-address={stop:#x}", str(code)], output, "original-"+label+"-disassembly")
+    if args.recover_registry_initialize:
+        (output / "registry-initialize-entries.txt").write_text("\n".join(str(entries[n]) for n in ("smt4_array_initialize", "smt4_worker_prefix_record_initialize", "smt4_worker_prefix_initialize")) + "\n")
+        for label, start, stop, thumb in (("array-initialize",0x2c5fac,0x2c5fce,True),("record-initialize",0x3561f0,0x356204,False),("registry-startup",0x3f3570,0x3f3584,False)):
+            run([str(tool_dir / "arm-none-eabi-objdump.exe"), "-D", "-b", "binary", "-m", "arm", *(["-M", "force-thumb"] if thumb else []), "--adjust-vma=0x100000", f"--start-address={start:#x}", f"--stop-address={stop:#x}", str(code)], output, "original-"+label+"-disassembly")
     log = run([*java, "ghidra.app.util.headless.AnalyzeHeadless", str(project), "SMT4-EU",
                "-process", "code.bin", "-readOnly", "-noanalysis", "-scriptPath",
-               str(ROOT / "tools/ghidra"), "-postScript", "CompareResourceWorkerPrefix.java" if args.recover_prefix else "CompareResourceWorkerLocaleConfig.java" if args.recover_locale_config else "CompareResourceWorkerLocaleBootstrap.java" if args.recover_locale_bootstrap else "CompareResourceWorkerLocale.java" if args.recover_locale else "CompareResourceWorkerPath.java" if args.recover_path else "CompareResourceWorkerFileCleanup.java" if args.recover_file_cleanup else "CompareResourceWorkerFileOpen.java" if args.recover_file_open else "CompareResourceWorkerFileRead.java" if args.recover_file_read else "CompareResourceWorkerFilePosition.java" if args.recover_file_position else "CompareResourceWorkerFileMethods.java" if args.recover_file_methods else "CompareResourceWorkerAllocation.java" if args.recover_allocation else "CompareResourceWorkerIo.java",
+               str(ROOT / "tools/ghidra"), "-postScript", "CompareResourceRegistryInitialize.java" if args.recover_registry_initialize else "CompareResourceBreak.java" if args.recover_break else "CompareResourceWorkerPrefix.java" if args.recover_prefix else "CompareResourceWorkerLocaleConfig.java" if args.recover_locale_config else "CompareResourceWorkerLocaleBootstrap.java" if args.recover_locale_bootstrap else "CompareResourceWorkerLocale.java" if args.recover_locale else "CompareResourceWorkerPath.java" if args.recover_path else "CompareResourceWorkerFileCleanup.java" if args.recover_file_cleanup else "CompareResourceWorkerFileOpen.java" if args.recover_file_open else "CompareResourceWorkerFileRead.java" if args.recover_file_read else "CompareResourceWorkerFilePosition.java" if args.recover_file_position else "CompareResourceWorkerFileMethods.java" if args.recover_file_methods else "CompareResourceWorkerAllocation.java" if args.recover_allocation else "CompareResourceWorkerIo.java",
                str(output), "-log", str(output / "ghidra.log")], output, "comparison")
     if args.mutant:
         if "SMT4_WORKER_IO_COMPARE_OK" in log:
@@ -424,7 +474,7 @@ def main():
     comparison = json.loads((output / "comparison.json").read_text())
     if comparison["io_cases"] != (2304 if args.recover_allocation else 3456) or (not args.recover_allocation and comparison["original_instruction_addresses"] != 163):
         raise RuntimeError("Incomplete comparison corpus")
-    if args.recover_allocation and (comparison["direct_object_cases"] != 48 or comparison["executed_allocations_both_paths"] != 6912 or comparison["original_instruction_addresses"] != (556 + comparison["new_path_instruction_addresses"] + comparison.get("new_locale_instruction_addresses", 0) + comparison.get("new_bootstrap_instruction_addresses", 0) + comparison.get("new_config_instruction_addresses", 0) + comparison.get("new_registry_instruction_addresses", 0) if args.recover_path else 556 if args.recover_file_cleanup else 525 if args.recover_file_open else 431 if args.recover_file_read else 397 if args.recover_file_position else 293 if args.recover_file_methods else 269) + (30 if args.recover_clear else 0)):
+    if args.recover_allocation and (comparison["direct_object_cases"] != 48 or comparison["executed_allocations_both_paths"] != 6912 or comparison["original_instruction_addresses"] != (556 + comparison["new_path_instruction_addresses"] + comparison.get("new_locale_instruction_addresses", 0) + comparison.get("new_bootstrap_instruction_addresses", 0) + comparison.get("new_config_instruction_addresses", 0) + comparison.get("new_registry_instruction_addresses", 0) if args.recover_path else 556 if args.recover_file_cleanup else 525 if args.recover_file_open else 431 if args.recover_file_read else 397 if args.recover_file_position else 293 if args.recover_file_methods else 269) + (30 if args.recover_clear else 0) + (23 if args.recover_break else 0)):
         raise RuntimeError("Incomplete allocation corpus")
     if args.recover_clear and (comparison.get("executed_clear_calls_both") != 6912 or not comparison.get("clearing_recovered")):
         raise RuntimeError("Incomplete recovered clear corpus")
@@ -448,6 +498,8 @@ def main():
         raise RuntimeError("Incomplete configuration corpus")
     if args.recover_prefix and (not comparison["prefix_mutation_recovered"] or comparison["connected_registrations_both"] != 4608):
         raise RuntimeError("Incomplete prefix corpus")
+    if args.recover_break and (comparison["direct_break_pairs"] != 72 or comparison["new_break_instruction_sites"] != 23 or not comparison["break_dispatch_recovered"]):
+        raise RuntimeError("Incomplete break corpus")
     manifest = {"reference_sha256": CODE_HASH, "binary_sha256": digest(binary),
                 "binary_bytes": binary.stat().st_size, "comparison": comparison,
                 "binary_matching": False, "original_binary_helpers_required": False,
@@ -507,6 +559,26 @@ def main():
         manifest["method"] += "; recovered clearing replaces zero model and its callback effects"
         for name in ("src/resource_clear.c", "src/resource_clear.h"):
             manifest["files_sha256"][name] = digest(ROOT / name)
+    # These headers are transitively consumed even in modes retaining the model.
+    manifest["files_sha256"]["src/resource_break.h"] = digest(ROOT / "src/resource_break.h")
+    if args.recover_break:
+        manifest["method"] += "; break mode supersedes the inherited preclose/prefix diagnostic models: callback dispatch and SVC wrapper execute; only callback body and kernel effects modeled; terminal paths stop at SVC"
+        for name in ("src/resource_break.c", "tools/ghidra/CompareResourceBreak.java"):
+            manifest["files_sha256"][name] = digest(ROOT / name)
+        manifest["break_dispatch"] = {"new_contracts": 3, "active_original_call_models_removed": 1,
+                                      "shared_model_names": ["smt4_worker_file_preclose", "smt4_worker_prefix_diagnostic"],
+                                      "raw_r2_caller_transport_extended": True, "callback_and_svc_modeled": True}
+        caller_checks = json.loads((output / "break-caller-summary.json").read_text())
+        if caller_checks != {"cleanup_payload_pairs": 9, "prefix_payload_pairs": 12, "persistent_sequences_both": 2}:
+            raise RuntimeError("Incomplete break caller boundaries")
+        manifest["break_dispatch"]["caller_checks"] = caller_checks
+    if args.recover_registry_initialize:
+        if not comparison.get("registry_initialization_recovered") or comparison["direct_initializer_pairs"] != 57 or comparison["initialized_lifecycle_sequences_both"] != 4 or comparison["connected_initializations_both"] != 4608 or comparison["new_initializer_instruction_sites"] != 27:
+            raise RuntimeError("Incomplete registry initialization corpus")
+        manifest["method"] += "; initialization mode replaces zero key/backend fixtures in new persistent and connected worker sequences with recovered startup/array/record code; inherited direct registry probes retain arbitrary fixtures; arbitrary constructors and backend services remain modeled"
+        for name in ("src/resource_array_initialize.c", "src/resource_array_initialize.h", "src/resource_worker_prefix_initialize.c", "tools/ghidra/CompareResourceRegistryInitialize.java"):
+            manifest["files_sha256"][name] = digest(ROOT / name)
+        manifest["registry_initialization"] = {"new_complete_routines": 2, "adapted_startup_slices": 1, "connected_initial_key_backend_fixture_removed": True, "broader_startup_recovered": False}
     (output / "COMPLETE.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest, indent=2))
 

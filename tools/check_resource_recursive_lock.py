@@ -7,9 +7,11 @@ from check_nkm_lookup import digest, run
 TARGETS = (("smt4_worker_backend_acquire", 0x2c3afc, 0x2c3b34),
            ("smt4_worker_backend_release", 0x2c3a78, 0x2c3a98))
 MUTATIONS = {
-    "tls-cache": ("words[1] = current_tls();", "words[1] = tls;"),
-    "owner-order": ("words[1] = 0;\n        smt4_signal_lock_release(lock);", "smt4_signal_lock_release(lock);\n        words[1] = 0;"),
-    "count-wrap": ("words[2] = words[2] + 1u;", "uint32_t count = words[2];\n    words[2] = count == UINT32_MAX ? UINT32_MAX : count + 1u;"),
+    "acquire-fast-r2": ("return (uint32_t)(uintptr_t)lock;", "return 0;"),
+    "acquire-slow-r2": ("return 0;", "return 1;"),
+    "tls-cache": ("mov r4, r0", "mov r4, r0\\nmrc p15, 0, r2, c13, c0, 3"),
+    "owner-order": ("str r1, [r0, #4]", "push {r4, lr}\\nmov r4, r0\\nbl smt4_signal_lock_release\\nmov r1, #0\\nstr r1, [r4, #4]\\npop {r4, pc}"),
+    "count-wrap": ("add r0, r0, #1", "adds r0, r0, #1\\nsubcs r0, r0, #1"),
 }
 
 def main():
@@ -29,17 +31,34 @@ def main():
     java = java_command()
     out.mkdir(parents=True)
     source = ROOT / "src/resource_recursive_lock.c"
-    if a.mutant:
+    base_source = ROOT / "src/resource_lock.c"
+    if a.mutant and a.mutant.startswith("acquire-"):
+        old, new = MUTATIONS[a.mutant]
+        content = base_source.read_text()
+        assert content.count(old) == (2 if a.mutant == "acquire-slow-r2" else 1)
+        base_source = out / base_source.name
+        base_source.write_text(content.replace(old, new))
+    elif a.mutant:
         old, new = MUTATIONS[a.mutant]
         content = source.read_text()
         assert content.count(old) == 1
         source = out / source.name
-        source.write_text(content.replace(old, new))
+        content = content.replace(old, new)
+        if a.mutant == "owner-order":
+            content = content.replace("b smt4_signal_lock_release", "nop")
+        if a.mutant == "tls-cache":
+            # Cache the initial TLS in a stack slot across the base call, then
+            # use it instead of the required second read. Keep public alignment.
+            content = content.replace("push {r4, lr}", "push {r4, lr}\\nsub sp, sp, #8")
+            content = content.replace("mrc p15, 0, r2, c13, c0, 3", "mrc p15, 0, r2, c13, c0, 3\\nstr r2, [sp]")
+            content = content.replace("mrc p15, 0, r0, c13, c0, 3\\n\"\n    \"str r0, [r4, #4]", "ldr r0, [sp]\\n\"\n    \"str r0, [r4, #4]")
+            content = content.replace("pop {r4, pc}", "add sp, sp, #8\\npop {r4, pc}")
+        source.write_text(content)
     elf, binary = out / "resource-recursive-lock.elf", out / "resource-recursive-lock.bin"
     run([str(tool / "arm-none-eabi-gcc.exe"), "-std=c11", "-O2", "-march=armv6k", "-marm",
          "-mfloat-abi=soft", "-ffreestanding", "-fno-builtin", "-fno-unwind-tables",
          "-fno-asynchronous-unwind-tables", "-Wall", "-Wextra", "-Werror", "-nostdlib",
-         str(source), str(ROOT / "src/resource_lock.c"), "-I", str(ROOT / "src"), "-Wl,-Ttext=0x600000",
+         str(source), str(base_source), "-I", str(ROOT / "src"), "-Wl,-Ttext=0x600000",
          "-Wl,--entry=smt4_worker_backend_acquire", "-Wl,--build-id=none", "-Wl,--defsym,smt4_arbitration_handle=0x471b58",
          "-Wl,--defsym,smt4_signal_arbitrate=0x2a88fc", "-o", str(elf)], out, "build")
     run([str(tool / "arm-none-eabi-objcopy.exe"), "-O", "binary", "--only-section=.text", str(elf), str(binary)], out, "objcopy")
